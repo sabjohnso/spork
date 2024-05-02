@@ -13,6 +13,8 @@ Spork is a utility library.
 @include-section["spork/arrow.scrbl"]
 @include-section["spork/infix-notation.scrbl"]
 @include-section["spork/curried.scrbl"]
+@include-section["spork/tag.scrbl"]
+@include-section["spork/union.scrbl"]
 
 
 @section{Examples}

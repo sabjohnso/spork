@@ -5,3 +5,5 @@
 
 @title[#:tag "infix"]{Infix Notation}
 @defmodule[spork/infix-notation]
+@section{Infix Notation Guide}
+@section{Infix Notation API Reference}

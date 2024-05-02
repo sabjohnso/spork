@@ -32,28 +32,31 @@ documented with examples, partitioned for @tech{functor},
 @tech{applicative functor}, @tech{monad}, @tech{comonad} and
 @tech{trivial} contexts.
 
-@; @section{Generics}
-@; The module provides the following generic interfaces:
-@; @itemlist[
-@;   @item{@racket[gen:trivial] — Generic interface for trivial structures.}
-@;   @item{@racket[gen:comonad] — Generic interface for comonadic structures.}
-@;   @item{@racket[gen:monad] — Generic interface for monadic structures.}
-@;   @item{@racket[gen:applicative] — Generic interface for applicative structures.}
-@;   @item{@racket[gen:functor] — Generic interface for functor structures.}
-@; ]
+@section{Functor Guide}
+@subsection{Using Functors}
+@subsection{Using Applicative Functors}
+@subsection{Using Monads}
+@subsection{Using Comonads}
+@subsection{Using Trivials}
+@subsection{Using Built-in Contexts}
+@subsubsection{Using Lists}
+@subsubsection{Using Nonempty Lists}
+@subsubsection{Using Vectors}
+@subsubsection{Using Streams}
+@subsubsection{Using Nonempty Streams}
+@subsubsection{Using Pairs}
+@subsubsection{Using Functions}
+@subsubsection{Using Thunks}
+@subsubsection{Using Futures}
+@subsection{Using Sportk Defined Contexts}
+@subsubsection{Using Optional Monad}
+@subsubsection{Using Either Monad}
+@subsubsection{Using Expect Monad}
+@subsubsection{Using Environment Monad}
+@subsubsection{Using State Monad}
 
-@; @subsection{Syntax Extensions}
-@; The module also provides several syntax extensions to facilitate
-@; working with monads, applicatives, and functors:
 
-@; @itemlist[
-@;   @item{@racket[begin/monad]}
-@;   @item{@racket[let/monad]}
-@;   @item{@racket[let/applicative]}
-@;   @item{@racket[let/functor]}
-@; ]
-
-@section{API Reference}
+@section{Functor API Reference}
 Each function, macro, and syntax extension provided by the module is
 documented with examples.
 
@@ -97,7 +100,7 @@ modularity and interoperability.
 @examples[#:eval functor-eval
   (struct my-struct (value)
     #:methods gen:functor
-    ((define (fmap-proc _) my-struct-fmap)))
+    ((define (fmap-prooc _) my-struct-fmap)))
 
   (define (my-struct-fmap f mx)
     (my-struct (f (my-struct-value mx))))
@@ -177,12 +180,12 @@ Wraps a value in a monad context, similar to the behavior of wrap in a
 trivial context. 
 
 @defproc[(flatmap [f (-> any/c monad?)] [mx monad?]) monad?]{
-Maps a function over a monad and flattens the result, chaining monad
-transformations.}
+  Maps a function over a monad and flattens the result, chaining monad
+  transformations.}
 
 @defproc[(join [mmx monad?]) monad?]{
-Flattens a nested monad structure by one level, merging two layers of
-monadic context into one.}
+  Flattens a nested monad structure by one level, merging two layers of
+  monadic context into one.}
 
 @defproc[(>=> [fs (-> any/c monad?)] ...) (-> any/c monad?)]{
  Left-to-right Kleisli composition}
@@ -250,3 +253,22 @@ unembellished values and are monads and comonads.
 @itemize[
   @item{thunk}
   @item{future}]
+
+@subsection{Built-in Contexts}
+@subsubsection{Lists}
+@subsubsection{Nonempty Lists}
+@subsubsection{Vectors}
+@subsubsection{Streams}
+@subsubsection{Nonempty Streams}
+@subsubsection{Pairs}
+@subsubsection{Functions}
+@subsubsection{Thunks}
+@subsubsection{Futures}
+
+@subsection{Spork Defined Contexts}
+@subsubsection{Optional Monad}
+@subsubsection{Either Monad}
+@subsubsection{Expect Monad}
+@subsubsection{Environment Monad}
+@subsubsection{State Monad}
+

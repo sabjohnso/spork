@@ -4,3 +4,10 @@
 
 @title[#:tag "arrow"]{Arrow}
 @defmodule[spork/arrow]
+@section{Arrow Guide}
+@subsection{Using Arrows}
+@subsection{Using Conditional Arrows}
+
+@section{Arrow API Reference}
+@subsection{Arrows}
+@subsection{Conditional Arrows}
