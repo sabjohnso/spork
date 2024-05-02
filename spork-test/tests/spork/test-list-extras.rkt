@@ -18,4 +18,10 @@
     (it "maps a list constructor over a list, returning a list"
       (check-equal?
        (list-flatmap (λ (x) (list x x)) '(1 2 3))
-       '(1 1 2 2 3 3)))))
+       '(1 1 2 2 3 3))))
+
+  (describe "list-join"
+    (it "removes the outer layer of a list of lists"
+      (check-equal?
+       (list-join '((1 2) (3 4)))
+       '(1 2 3 4)))))

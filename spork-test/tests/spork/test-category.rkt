@@ -3,7 +3,7 @@
 (module+ test
   (require
    rackunit rackunit/spec
-   spork/category spork/infix-notation)
+   spork/category spork/infix-notation spork/function-extras)
 
   (describe "categories"
     (context "with a wrapper around functions as a category"

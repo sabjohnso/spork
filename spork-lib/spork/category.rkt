@@ -5,7 +5,6 @@
  (contract-out
   [id? predicate/c]
   [id id?]
-  [function? predicate/c]
   [category? predicate/c]
   [category-compose (->* () () #:rest (listof category?) category?)]
   [category-id (-> category? category?)]
@@ -13,15 +12,11 @@
   [<< (->* () () #:rest (listof category?) category?)]))
 
 (require
- racket/generic spork/tag)
+ racket/generic spork/tag spork/function-extras)
 
 (define-tag id)
 
 (define (id-compose f g) id)
-
-(define (function? x)
-  (and (procedure? x)
-       (procedure-arity-includes? x 1)))
 
 (define-generics category
   (compose-proc category)

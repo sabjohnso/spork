@@ -88,4 +88,9 @@
                          (simple positive?) `***
                          (simple number->string))
                         '(3 . (10 . -2)))
-            '(#t . (#t . "-2")))))))))
+            '(#t . (#t . "-2")))))
+
+       (describe ">>>"
+         (it "composes arrows from left to right."
+           (check-equal? (simple-run ((simple symbol->string) `>>> (simple string-length)) 'abc)
+                         3)))))))

@@ -3,7 +3,7 @@
 (module+ test
   (require
    rackunit rackunit/spec
-   spork/functor spork/infix-notation)
+   spork/functor spork/infix-notation spork/curried spork/function-extras)
 
   (describe "the trivial protocol"
     (context "with a trivial type"
@@ -107,7 +107,13 @@
           (describe ">=>"
             (it "it performs right-to-left composition of monad constructors"
               (define func (ctor3 `>=> ctor2 `>=> ctor1))
-              (check-equal? (func 10) (just "10"))))))
+              (check-equal? (func 10) (just "10"))))
+
+          (describe ">>="
+            (it "it performs monad chaining"
+              (define (func mx)
+                (mx `>>= ctor3 `>>= ctor2 `>>= ctor1))
+              (check-equal? (func (just 10)) (just "10"))))))
 
       (it "supports derivation of the applicative functor methods"
         (check-true (applicative? (just 'x)))
@@ -162,6 +168,41 @@
             (check-equal? (join (just (just 'x))) (just 'x))
             (check-equal? (join (just (nothing))) (nothing))
             (check-equal? (join (nothing)) (nothing)))))
+
+      (it "supports other monad functions"
+        (context "with three constructors"
+          (define (ctor1 x) (just (number->string x)))
+          (define (ctor2 x) (if (> x 0) (just x) (nothing)))
+          (define (ctor3 x) (if (zero? x) (nothing) (just (/ 100 x))))
+
+          (describe "monad-compose (Kleisli composition)"
+            (it "composes multiple monad constructors from right to left"
+              (define func (monad-compose ctor1 ctor2 ctor3))
+              (check-equal? (func 10) (just "10")))
+
+            (it "acts as the identity function when provided with only one constructor"
+              (define func (monad-compose ctor2))
+              (check-equal? ctor2 func)
+              (check-equal? (func 10) (just 10)))
+
+            (it "return `return` when no constructors are provide"
+              (check-equal? (monad-compose) return)))
+
+          (describe "<=<"
+            (it "is a synonym for monad-compose that may be preferable with infix notation"
+              (define func (ctor1 `<=< ctor2 `<=< ctor3))
+              (check-equal? (func 10) (just "10"))))
+
+          (describe ">=>"
+            (it "it performs right-to-left composition of monad constructors"
+              (define func (ctor3 `>=> ctor2 `>=> ctor1))
+              (check-equal? (func 10) (just "10"))))
+
+          (describe ">>="
+            (it "it performs monad chaining"
+              (define (func mx)
+                (mx `>>= ctor3 `>>= ctor2 `>>= ctor1))
+              (check-equal? (func (just 10)) (just "10"))))))
 
       (it "supports derivation of the applicative functor methods"
         (check-true (applicative? (just 'x)))
@@ -222,7 +263,6 @@
         (ziplist (map f (ziplist-get xs))))
 
       (it "supports the `fapply` and `pure` functions"
-
         (describe "pure"
           (it "puts a value into an unresolved context"
             (check-true (unresolved? (pure 'x)))))
@@ -236,10 +276,16 @@
             (check-equal?
              (fapply (pure symbol->string) (make-ziplist 'x))
              (make-ziplist "x"))
-
             (check-equal?
              (fapply (make-ziplist symbol->string) (pure 'x))
              (make-ziplist "x")))))
+
+      (it "supports the applicative functor operators"
+        (describe "<*>"
+          (it "performs applicative mapping"
+            (define-curried (add x y) (+ x y))
+            (check-equal? ((pure add) `<*>  '(1 2) `<*> '(3 4))
+                          '(4 5 5 6)))))
 
       (it "supports derivation of functor methods"
         (check-true (functor? (make-ziplist 'x 'y 'z)))
@@ -267,6 +313,11 @@
       (it "supports the `fmap` function"
         (check-equal?
          (fmap symbol->string (named "Bob" 'x))
+         (named "Bob" "x")))
+
+      (it "supports the `<$>` function"
+        (check-equal?
+         (symbol->string `<$> (named "Bob" 'x))
          (named "Bob" "x")))
 
       (it "supports functor binding syntax"
@@ -332,4 +383,156 @@
           (describe "=>="
             (it "is the left-to-right analog of =<="
               (define dtor (dtor1 `=>= dtor2 `=>= dtor3))
-              (check-equal? (dtor (named "Bob" 'x)) "Bob-xx"))))))))
+              (check-equal? (dtor (named "Bob" 'x)) "Bob-xx")))))))
+
+
+  (describe "the function context"
+    (context "with a couple of curried functions defined"
+      (define-curried (add x y) (+ x y))
+      (define-curried (mul x y) (* x y))
+      
+      (it "is a monad"
+       (check-true (monad? sqr))
+       (define f (let/monad ([x sqr]
+                             [y (join add)])
+                   (return (+ x y))))
+       (check-true (function? f))
+       (check-true (monad? f))
+       (check-equal? (f 3) 15))
+      
+     (it "is an applicative functor"
+       (check-true (applicative? sqr))
+       (define f (let/applicative ([x (join mul)]
+                                   [y (join add)])
+                   (+ x y)))
+       (check-true (applicative? f))
+       (check-equal? (f 3) 15))
+      
+     (it "is a functor"
+       (check-true (functor? sqr))
+       (define f (let/functor ([x (join mul)]
+                               [y (join add)])
+                   (+ x y)))
+       (check-true (functor? f))
+       (check-equal? ((f 3) 4) 17)
+       (check-equal? ((join f) 3) 15))
+
+     (it "is not trivial"
+       (check-false (trivial? sqr)))
+
+     (it "is not a comonad"
+       (check-false (comonad? sqr)))))
+
+  (describe "the list context"
+    (it "is a monad"
+      (check-true (monad? '(1 2 3)))
+
+      (check-equal?
+       (let/monad ([x '(1 2)]
+                   [y '(3 4)])
+         (return (+ x y)))
+       '(4 5 5 6))
+      
+      (check-equal?
+       (let/monad ([x '(1 2)])
+         (list x x))
+       '(1 1 2 2))
+
+      (check-equal? ('(1 2) `>>= (λ (x) (list x x)))
+                    '(1 1 2 2)))
+
+    (it "is an applicative functor"
+      (check-true (applicative? '(x y)))
+      (check-equal? (fapply (list sqr) (list 2 3)) '(4 9))
+      (check-equal? (fapply (pure sqr) (list 2 3)) '(4 9))
+      (check-equal? (fapply (list sqr) (pure 3)) '(9)))
+
+    (it "is a functor"
+      (check-true (functor? '(a b c)))
+      (check-equal? (fmap symbol->string '(a b c)) '("a" "b" "c"))
+      (check-equal? (symbol->string `<$> '(a b c)) '("a" "b" "c"))))
+
+  (describe "the vector context"
+    (it "is a monad"
+      (check-true (monad? #(1 2 3)))
+
+      (check-equal?
+       (let/monad ([x #(1 2)]
+                   [y #(3 4)])
+         (return (+ x y)))
+       #(4 5 5 6))
+      
+      (check-equal?
+       (let/monad ([x #(1 2)])
+         (vector x x))
+       #(1 1 2 2))
+
+      (check-equal? (#(1 2) `>>= (λ (x) (vector x x)))
+                    #(1 1 2 2)))
+
+    (it "is an applicative functor"
+      (check-true (applicative? '(x y)))
+      (check-equal? (fapply (list sqr) (list 2 3)) '(4 9))
+      (check-equal? (fapply (pure sqr) (list 2 3)) '(4 9))
+      (check-equal? (fapply (list sqr) (pure 3)) '(9)))
+
+    (it "is a functor"
+      (check-true (functor? '(a b c)))
+      (check-equal? (fmap symbol->string '(a b c)) '("a" "b" "c"))
+      (check-equal? (symbol->string `<$> '(a b c)) '("a" "b" "c"))))
+
+  (describe "the stream-context"
+    (it "is a monad"
+      (check-true (monad? (stream 'a 'b)))
+      (check-equal?
+       (stream->list
+        (let/monad ([x (stream 1 2)]
+                    [y (stream 3 4)])
+          (return (+ x y))))
+       '(4 5 5 6)))
+    
+    (it "is an applicative-functor"
+      (check-true (applicative? (stream 'a 'b)))
+      (check-equal? (stream->list (fapply (stream symbol->string) (stream 'a 'b))) '("a" "b"))
+      (check-equal? (stream->list (fapply (pure symbol->string) (stream 'a 'b))) '("a" "b"))
+      (check-equal? (stream->list (fapply (stream symbol->string) (pure 'a))) '("a")))
+
+    (it "is a functor"
+      (check-true (functor? (stream 'a 'b)))
+      (check-equal? (stream->list (fmap symbol->string (stream 'a 'b))) '("a" "b"))))
+
+
+  (describe "the thunk context"
+    (it "is a trivial"
+      (check-true (trivial? (thunk 'x)))
+      (check-equal? (unwrap (thunk 'x)) 'x))
+    
+    (it "is a monad"
+      (check-true (monad? (thunk 'x)))
+      (check-equal? (extract (flatmap (λ (x) (thunk (sqr x))) (thunk 3))) 9)
+
+      (check-equal?
+       (extract
+        (let/monad ([x (thunk 3)]
+                    [y (thunk 4)])
+          (return (+ x y))))
+       7))
+    
+    (it "is an applicative functor"
+      (check-true (applicative? (thunk 'x)))
+      (check-equal?
+       (extract
+        (let/applicative ([x (thunk 3)]
+                          [y (pure 4)])
+          (+ x y)))
+       7))
+    
+    (it "is a functor"
+      (check-true (functor? (thunk 'x)))
+      (check-equal? (extract (fmap sqr (thunk 3))) 9))
+    
+    (it "is a comonad"
+      (check-true (comonad? (thunk 'x)))
+      (check-equal? (extract (thunk 'x)) 'x)
+      (check-equal? (extract (join (duplicate (thunk 'x)))) 'x)
+      (check-equal? (extract (extend (compose symbol->string extract) (thunk 'x))) "x"))))

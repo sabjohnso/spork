@@ -29,24 +29,35 @@
 
   [monad? predicate/c]
   [return (-> any/c monad?)]
-  [flatmap (-> (-> any/c monad?) monad? monad?)]
+  [flatmap (curried-> (-> any/c monad?) monad? monad?)]
   [join (-> monad? monad?)]
   [monad-compose (->* () () #:rest (listof (-> any/c monad?)) (-> any/c monad?))]
+  [>>= (->* (monad?) () #:rest (listof (-> any/c monad?)) monad?)]
   [>=> (->* () () #:rest (listof (-> any/c monad?)) (-> any/c monad?))]
   [<=< (->* () () #:rest (listof (-> any/c monad?)) (-> any/c monad?))]
 
   [applicative? predicate/c]
   [pure (-> any/c applicative?)]
-  [fapply (-> applicative? applicative? applicative?)]
+  [fapply (curried-> applicative? applicative? applicative?)]
+  [fapply* (->* (applicative? applicative?) () #:rest (listof applicative?) applicative?)]
+  [<*> (->* (applicative? applicative?) () #:rest (listof applicative?) applicative?)]
 
   [functor? predicate/c]
-  [fmap (-> (-> any/c any/c) functor? functor?)]))
+  [fmap (curried-> (-> any/c any/c) functor? functor?)]
+  [<$> (-> (-> any/c any/c) functor? functor?)]))
 
 (require
  (for-syntax racket racket/syntax syntax/parse)
  racket/generic
  spork/list-extras
- spork/pair-extras)
+ spork/function-extras
+ spork/vector-extras
+ spork/stream-extras
+ spork/sequence-extras
+ spork/thunk-extras
+ spork/future-extras
+ spork/pair-extras
+ spork/curried)
 
 ;; The struct unresolved is a trivial, temporary context
 ;; used to hold a value injected into some context
@@ -63,7 +74,14 @@
   #:fast-defaults
   ([unresolved?
     (define (wrap-proc unresolved) unresolved)
-    (define (unwrap-proc unresolved) unresolved-value)]))
+    (define (unwrap-proc unresolved) unresolved-value)])
+  #:defaults
+  ([thunk?
+    (define (wrap-proc thunk) thunk-wrap)
+    (define (unwrap-proc thunk) thunk-unwrap)]
+   [future?
+    (define (wrap-proc future) future-wrap)
+    (define (unwrap-proc future) future-unwrap)]))
 
 ;; wrap
 ;; ----
@@ -155,8 +173,6 @@
 (define (comonad-fmap f wx)
   (extend (compose f extract) wx))
 
-
-
 ;; Monad
 ;; =====
 ;;
@@ -168,13 +184,31 @@
   #:fast-defaults
   ([list?
     (define (return-proc list) list-return)
-    (define (flatmap-proc list) list-flatmap)]
-   [vector?]
-   [stream?]
-   [sequence?])
+    (define (flatmap-proc list) list-flatmap)
+    (define (join-proc list) list-join)]
+
+   [vector?
+    (define (return-proc vector) vector-return)
+    (define (flatmap-proc vector) vector-flatmap)
+    (define (join-proc vector) vector-join)]
+
+   [stream?
+    (define (return-proc stream) stream-return)
+    (define (flatmap-proc stream) stream-flatmap)
+    (define (join-proc stream) stream-join)]
+   
+   [sequence?
+    (define (return-proc seq) sequence-return)
+    (define (flatmap-proc seq) sequence-flatmap)
+    (define (join-proc seq) (sequence-join))])
 
   #:defaults
-  ([trivial?
+  ([function?
+    (define (return-proc function) function-return)
+    (define (flatmap-proc function) function-flatmap)
+    (define (join-proc function) function-join)]
+   
+   [trivial?
     (define (return-proc trivial) (wrap-proc trivial))
     (define (flatmap-proc trivial) trivial-flatmap)
     (define (join-proc trivial) (unwrap-proc trivial))])
@@ -203,7 +237,7 @@
 ;; Otherwise, with the resolved flatmap, map a transformed function that
 ;; add context resolution to the input function.
 ;;
-(define (flatmap f mx)
+(define-curried (flatmap f mx)
   (if (unresolved? mx) (f (unwrap mx))
     (let ([flatmap (flatmap-proc mx)]
           [return (return-proc mx)])
@@ -212,6 +246,11 @@
                    (if (unresolved? my) (return (unwrap my))
                      my)))
                mx))))
+
+(define (>>= mx . fs)
+  (cond [(= (length fs) 1) (flatmap (car fs) mx)]        
+        [(null? fs) mx]
+        [#t (apply >>= (flatmap (car fs) mx) (cdr fs))]))
 
 ;; join
 ;; ----
@@ -294,6 +333,17 @@
   (pure-proc applicative)
   (fapply-proc applicative)
 
+  #:fast-defaults
+  ([list?
+    (define (pure-proc list) list-return)
+    (define (fapply-proc list) list-fapply)]
+   [vector?
+    (define (pure-proc vector) vector-return)
+    (define (fapply-proc vector) vector-fapply)]
+   [stream?
+    (define (pure-proc stream) stream-return)
+    (define (fapply-proc stream) stream-fapply)])
+
   #:defaults
   ([monad?
     (define (pure-proc monad) (return-proc monad))
@@ -301,7 +351,7 @@
 
 (define (pure x) (unresolved x))
 
-(define (fapply mf mx)
+(define-curried (fapply mf mx)
   (match* (mf mx)
     [((unresolved f) (unresolved x)) (unresolved (f x))]
     [((unresolved f) mx)
@@ -323,6 +373,9 @@
   (if (null? mys) (fapply mf mx)
     (apply fapply* (fapply mf mx) mys)))
 
+(define (<*> mf mx . mys)
+  (apply fapply* mf mx mys))
+
 
 (define-syntax (let/applicative stx)
   (syntax-parse stx
@@ -342,15 +395,26 @@
 (define-generics functor
   (fmap-proc functor)
 
+  #:fast-defaults
+  ([list?
+    (define (fmap-proc list) list-fmap)]
+   [vector?
+    (define (fmap-proc vector) vector-fmap)]
+   [stream?
+    (define (fmap-proc stream) stream-fmap)])
+  
   #:defaults
   ([applicative?
     (define (fmap-proc applicative) applicative-fmap)]
    [comonad?
     (define (fmap-proc comonad) comonad-fmap)]))
 
-(define (fmap f mx)
+(define-curried (fmap f mx)
   (let ([fmap (fmap-proc mx)])
     (fmap f mx)))
+
+(define (<$> f mx)
+  (fmap f mx))
 
 (define-syntax (let/functor stx)
   (syntax-parse stx
