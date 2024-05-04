@@ -19,11 +19,15 @@
     [<<<        (->* () () #:rest (listof arrow?) arrow?)]
     [>>>        (->* () () #:rest (listof arrow?) arrow?)]))
 
-  (require racket/generic spork/curried spork/category)
+  (require racket/generic spork/curried spork/category spork/function-extras)
 
    (define (id-comp id1 id2) id)
 
-   (struct arr (fun) #:transparent)
+   (struct arr
+     (fun)
+     #:property prop:procedure (struct-field-index fun)
+     #:transparent)
+
    (define (arr-fst f)
      (match-let ([(arr f) f])
        (arr (match-lambda [(cons x y) (cons (f x) y)]))))
@@ -50,6 +54,15 @@
        (define (fst-proc arrow) arr-fst)
        (define (arrow-comp-proc arrow) arr-comp)
        (define (arrow-id-value arrow) arr-id)])
+
+     #:defaults
+     ([function?
+       (define (arr-proc function) function-arr)
+       (define (fst-proc function) function-fst)
+       (define (snd-proc function) function-snd)
+       (define (split-proc function) function-split)
+       (define (fanout-proc function) function-fanout)])
+
 
      #:fallbacks
      ((define (fst-proc arrow) derived-fst)

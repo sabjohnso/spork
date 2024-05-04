@@ -2,7 +2,7 @@
 
 (module+ test
   (require
-   spork/infix-notation spork/category spork/arrow spork/functor
+   spork/infix-notation spork/category spork/arrow spork/functor spork/function-extras
    rackunit rackunit/spec)
 
   (describe "the arrow protocol"
@@ -93,4 +93,28 @@
        (describe ">>>"
          (it "composes arrows from left to right."
            (check-equal? (simple-run ((simple symbol->string) `>>> (simple string-length)) 'abc)
-                         3)))))))
+                         3))))))
+
+  (describe "the function arrow"
+    (describe "arr"
+      (it "lifts a function into the function arrow, but doesn't really do anything"
+        (check-equal? ((sqr `>>> (arr number->string)) 3) "9")
+        (check-equal? (((arr sqr) `>>> number->string) 3) "9") 
+        (check-equal? (((arr sqr) `>>> (arr number->string)) 3) "9")))
+
+    (describe "fst"
+      (it "returns a function arrow applying the input arrow to the first input"
+        (check-equal? ((fst sqr) '(3 . x)) '(9 . x))))
+
+    (describe "snd"
+      (it "returns a function arrow applying the input arrow to the second input"
+        (check-equal? ((snd sqr) '(x . 3)) '(x . 9))))
+
+    (describe "split"
+      (it "returns a function splitting the input between the argument functions"
+        (check-equal? ((split sqr symbol->string) '(3 . x)) '(9 . "x"))))
+
+    (describe "fanout"
+      (it "returns a function arrow consing the results of applying the input arrows"
+        (check-equal? ((fanout sqr number->string) 3) '(9 . "3"))))))
+
