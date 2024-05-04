@@ -7,7 +7,8 @@
   [function-fapply (-> function? function? function?)]
   [function-flatmap (-> (-> any/c function?) function? function?)] 
   [function-return  (-> any/c function?)]
-  [function-join (-> function? function?)]))
+  [function-join (-> function? function?)]
+  [function-arr (-> function? function?)]))
 
 (define (function? x)
   (and (procedure? x) (procedure-arity-includes? x 1)))
@@ -31,3 +32,5 @@
 
 (define (function-join mmx)
   (λ (e) ((mmx e) e)))
+
+(define (function-arr f) f)

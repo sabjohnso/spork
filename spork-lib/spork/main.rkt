@@ -8,7 +8,9 @@
   spork/functor
   spork/infix-notation
   spork/tag
-  spork/union))
+  spork/union
+  spork/optional
+  spork/expect))
 
 (require
  spork/arrow
@@ -17,4 +19,6 @@
  spork/functor
  spork/infix-notation
  spork/tag
- spork/union)
+ spork/union
+ spork/optional
+ spork/expect)

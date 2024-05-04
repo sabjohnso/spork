@@ -53,5 +53,15 @@
             (+ x y))
           (define f (function-flatmap add sqr))
           (check-true (function? f))
-          (check-equal? (f 3) 12))))))
+          (check-equal? (f 3) 12)))
+
+
+      (describe "function-arr"
+        (it "lifts a function into the function arrow (it is identity)"
+          (check-equal? (function-arr sqr) sqr)))
+
+      (describe "function-fst"
+        (it "returns a function applying the argument function to the first input"
+          (check-equal? ((function-fst sqr) `(3 . x))
+                        `(9 . x)))))))
 
