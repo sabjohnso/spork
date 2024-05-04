@@ -8,22 +8,40 @@
    gen:arrow
    (struct-out arr)
    (contract-out
-    [arrow? predicate/c]
-    [fst        (-> arrow? arrow?)]
-    [snd        (-> arrow? arrow?)]
-    [fanout     (-> arrow? arrow? arrow?)]
-    [&&&        (->* () () #:rest (listof arrow?) arrow?)]
-    [split      (-> arrow? arrow? arrow?)]
-    [***        (->* () () #:rest (listof arrow?) arrow?)]
-    [arrow-comp (-> arrow? arrow? arrow?)]
-    [<<<        (->* () () #:rest (listof arrow?) arrow?)]
-    [>>>        (->* () () #:rest (listof arrow?) arrow?)]
-    [choose-left (-> arrow-choice? arrow-choice?)]
+    [arrow?       predicate/c]
+    [fst          (-> arrow? arrow?)]
+    [snd          (-> arrow? arrow?)]
+    [fanout       (-> arrow? arrow? arrow?)]
+    [&&&          (->* () () #:rest (listof arrow?) arrow?)]
+    [^&&          (-> function? arrow? arrow?)]
+    [&&^          (-> arrow? function? arrow?)]
+    [^&^          (-> function? function? arrow?)]
+    [split        (-> arrow? arrow? arrow?)]
+    [***          (->* () () #:rest (listof arrow?) arrow?)]
+    [^**          (-> function? arrow? arrow?)]
+    [**^          (-> arrow? function? arrow?)]
+    [^*^          (-> function? function? arrow?)]
+    [arrow-comp   (-> arrow? arrow? arrow?)]
+    [<<<          (->* () () #:rest (listof arrow?) arrow?)]
+    [^<<          (-> function? arrow? arrow?)]
+    [<<^          (-> arrow? function? arrow?)]
+    [^<^          (-> function? function? arrow?)]
+    [>>>          (->* () () #:rest (listof arrow?) arrow?)]
+    [^>>          (-> function? arrow? arrow?)]
+    [>>^          (-> arrow? function? arrow?)]
+    [^>^          (-> function? function? arrow?)]
+    [choose-left  (-> arrow-choice? arrow-choice?)]
     [choose-right (-> arrow-choice? arrow-choice?)]
-    [choose (-> arrow-choice? arrow-choice? arrow-choice?)]
-    [fanin (-> arrow-choice? arrow-choice? arrow-choice?)]
-    [+++ (->* (arrow-choice? arrow-choice?) () #:rest (listof arrow-choice?) arrow-choice?)]
-    [/// (->* (arrow-choice? arrow-choice?) () #:rest (listof arrow-choice?) arrow-choice?)]))
+    [choose       (-> arrow-choice? arrow-choice? arrow-choice?)]
+    [fanin        (-> arrow-choice? arrow-choice? arrow-choice?)]
+    [+++          (->* (arrow-choice? arrow-choice?) () #:rest (listof arrow-choice?) arrow-choice?)]
+    [^++          (-> function? arrow-choice? arrow-choice?)]
+    [++^          (-> arrow-choice? function? arrow-choice?)]
+    [^+^          (-> function? function? arrow-choice?)]
+    [///          (->* (arrow-choice? arrow-choice?) () #:rest (listof arrow-choice?) arrow-choice?)]
+    [^//          (-> function? arrow-choice? arrow-choice?)]
+    [//^          (-> arrow-choice? function? arrow-choice?)]
+    [^/^          (-> function? function? arrow-choice?)]))
 
   (require racket/generic spork/curried spork/category spork/function-extras spork/either)
 
@@ -76,9 +94,7 @@
       (define (split-proc arrow) derived-split)
       (define (fanout-proc arrow) derived-fanout)
       (define (arrow-comp-proc arrow) category-compose)
-      (define (arrow-id-value arrow) id)
-
-       ))
+      (define (arrow-id-value arrow) id)))
 
    (define (fst f)
      ((fst-proc f) f))
@@ -100,8 +116,26 @@
        [(list f g) (arrow-comp f g)]
        [(list f g h hs ...) (apply <<< (arrow-comp f g) h hs)]))
 
+   (define (^<< f g)
+     ((arr f) `<<< g))
+
+   (define (<<^ f g)
+     (f `<<< (arr g)))
+
+   (define (^<^ f g)
+     ((arr f) `<<< (arr g)))
+
    (define (>>> . fs)
      (apply <<< (reverse fs)))
+
+   (define (^>> f g)
+     ((arr f) `>>> g))
+
+   (define (>>^ f g)
+     (f `>>> (arr g)))
+
+   (define (^>^ f g)
+     ((arr f) `>>> (arr g)))
 
    (define (fanout f g)
      (match* (f g)
@@ -116,6 +150,15 @@
            [(= (length fs) 1) (car fs)]
            [(null? fs) id]))
 
+   (define (^&& f g)
+     ((arr f) `&&& g))
+
+   (define (&&^ f g)
+     (f `&&& (arr g)))
+
+   (define (^&^ f g)
+     ((arr f) `&&& (arr g)))
+
    (define (split f g)
      (match* (f g)
        [((arr f) (arr g)) ((split-proc (arr f)) (arr f) (arr g))]
@@ -128,6 +171,15 @@
            [(> (length fs) 2) (split (car fs) (apply *** (cdr fs)))]
            [(= (length fs) 1) (car fs)]
            [(null? fs) id]))
+
+   (define (^** f g)
+     ((arr f) `*** g))
+
+   (define (**^ f g)
+     (f `*** (arr g)))
+
+   (define (^*^ f g)
+     ((arr f) `*** (arr g)))
 
    (define (swap xy)
      (match-let ([(cons x y) xy])
@@ -192,9 +244,27 @@
      (if (null? hs) (choose f g)
        (choose f (apply +++ g hs))))
 
+   (define (^++ f g)
+     ((arr f) `+++ g))
+
+   (define (++^ f g)
+     (f `+++ (arr g)))
+
+   (define (^+^ f g)
+     ((arr f) `+++ (arr g)))
+
    (define (/// f g . hs)
      (if (null? hs) (fanin f g)
        (fanin f (apply /// g hs))))
+
+   (define (^// f g)
+     ((arr f) `/// g))
+
+   (define (//^ f g)
+     (f `/// (arr g)))
+
+   (define (^/^ f g)
+     ((arr f) `/// (arr g)))
 
    (define (derived-choose-left f)
      (choose f (arr identity)))
