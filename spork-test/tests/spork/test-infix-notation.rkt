@@ -17,7 +17,7 @@
       (check-true (1 `< 2 `< 3 `< 4)))
 
     (it "will not combine different operators"
-      (check-exn exn:fail? (thunk (1 `+ 2 `* 3))))
+      (check-exn exn:fail? (thunk (eval #'(1 `+ 2 `* 3)))))
 
     (context "given a binary function"
       (define (add x y)
@@ -59,4 +59,4 @@
       (check-exn exn:fail? (thunk (1 `(λ (x y) (+ x y)) 2))))
 
     (it "won't work if the operator is not uniform doing so would be ambiguous and stupid"
-      (check-exn exn:fail? (thunk (1 `+ 2 `* 3))))))
+      (check-exn exn:fail? (thunk (eval #'(1 `+ 2 `* 3)))))))
