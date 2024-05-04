@@ -17,6 +17,7 @@ Spork is a utility library.
 @include-section["spork/union.scrbl"]
 @include-section["spork/optional.scrbl"]
 @include-section["spork/expect.scrbl"]
+@include-section["spork/either.scrbl"]
 
 
 @section{Examples}

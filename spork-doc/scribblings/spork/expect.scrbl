@@ -3,7 +3,7 @@
 @begin[
   (require
     (for-label racket (except-in spork #%app))
-    racket  racket/sandbox    
+    racket  racket/sandbox
     scribble/eval (except-in scribble/manual link))
 
   (define optional-eval
@@ -27,15 +27,15 @@ exceptional case, but resorting to raising an exception is execessive.
     (if (zero? y) (unexpected "division by zero")
       (expected (/ x y))))]
 
-The @tech{expect} type is a 
+The @tech{expect} type is a
 @seclink["Monad" #:doc '(lib "scribblings/spork.scrbl") "monad"]
 and hence, also an
-@seclink["Applicative" #:doc '(lib "scribblings/spork.scrbl")
-"applicative functor"]
+@seclink["Applicative" #:doc '(lib "scribblings/spork.scrbl") "applicative functor"]
 and a
 @seclink["Functors" #:doc '(lib "scribblings/spork.scrbl")
 "functor"]. This means that it can take full advantage of the
 functionality associated with those protocols.
+
 
 @section{Exepct API Reference}
 
@@ -56,7 +56,3 @@ functionality associated with those protocols.
 @defproc[(unexpected? [v expect?]) boolean?]{
   Return @racket[#t] if the @tech{expect} argument is an @tech{unexpected} message.
   Otherwise, return @racket[#f].}
-
-
-
-

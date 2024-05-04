@@ -3,7 +3,7 @@
 @begin[
   (require
     scribble/eval
-    (except-in racket #%app) racket/sandbox  racket/generic 
+    (except-in racket #%app) racket/sandbox  racket/generic
                 (except-in scribble/manual link)
          (for-syntax racket scribble/eval spork/functor)
          (for-label racket spork/functor racket/generic syntax/stx))]
@@ -13,7 +13,7 @@
                   [sandbox-error-output 'string]
                   [sandbox-memory-limit 50])
       (make-evaluator 'racket  #:requires '(spork))))
-      
+
 
 @title[#:tag "functor"]{Functor}
 @defmodule[spork/functor]
@@ -71,11 +71,6 @@ application of a function to each element within an instance of that
 context, preserving its shape while potentially changing its
 contents. More succinctly, it is a context that permits mapping.
 
-The @tech{functor} protocol is intended to enable a more uniform usage
-of the @tech{functor} concept in Racket while eliminating some
-boilerplate code. It is enabled by the @racket[gen:functor] generic
-interface.
-
 The @tech{functor} protocol intends to standardizes the implementation
 of the @tech{functor} concept across various data structures and other
 contexts, thereby reducing repetitive boilerplate code. This protocol
@@ -84,6 +79,25 @@ provides a unified framework for implementing the necessary components
 to support functor operations. By using this protocol, different data
 types can uniformly support functorial operations, enhancing code
 modularity and interoperability.
+
+The @tech{functor} protocol is implemented for a number of Racket's
+built-in data structures, such as:
+ @itemize[
+   @item{lists}
+   @item{vectors}
+   @item{streams}
+   @item{pairs}
+   @item{@racket[future?]}]
+
+Other built-in contexts are also supported, such as:
+  @itemize[
+    @item{functions}
+    @item{thunks}]
+
+Support of the above contexts is primarily derived from their support
+for the @tech{monad} protocol through the @tech{applicative functor}
+protocol, though @tech{thunk}s are a @tech{trivial} context.
+
 
 @defthing[gen:functor any/c]
  Associates a required fmap-proc method with a structure type to
@@ -180,7 +194,7 @@ infix notation.
 
 @defproc[(return [x any/c]) monad?]
 Wraps a value in a monad context, similar to the behavior of wrap in a
-trivial context. 
+trivial context.
 
 @defproc[(flatmap [f (-> any/c monad?)] [mx monad?]) monad?]{
   Maps a function over a monad and flattens the result, chaining monad
@@ -252,7 +266,7 @@ unembellished values and are monads and comonads.
 @defproc[(unwrap [tv trivial?]) any/c]{
   Extracts the value from a trivial context, effectively reversing the
   wrap operation.}
-  
+
 @itemize[
   @item{thunk}
   @item{future}]
@@ -274,4 +288,3 @@ unembellished values and are monads and comonads.
 @subsubsection{Expect Monad}
 @subsubsection{Environment Monad}
 @subsubsection{State Monad}
-
