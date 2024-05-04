@@ -62,6 +62,21 @@
 
       (describe "function-fst"
         (it "returns a function applying the argument function to the first input"
-          (check-equal? ((function-fst sqr) `(3 . x))
-                        `(9 . x)))))))
+          (check-equal? ((function-fst sqr) '(3 . x))
+                        '(9 . x))))
+
+      (describe "function-snd"
+        (it "returns a function applying the argument function to the second input"
+          (check-equal? ((function-snd sqr) '(x . 3))
+                        '(x . 9))))
+
+      (describe "function-split"
+        (it "returns a function splitting the input between the two argument functions"
+          (check-equal? ((function-split sqr symbol->string) '(3 . x))
+                        '(9 . "x"))))
+
+      (describe "function-fanout"
+        (it "returns a function sending the input to both argument functions"
+          (check-equal? ((function-fanout sqr number->string) 3)
+                        '(9 . "3")))))))
 
