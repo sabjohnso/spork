@@ -71,6 +71,9 @@
   (wrap-proc trivial)
   (unwrap-proc trivial)
 
+  #:requires
+  (wrap-proc unwrap-proc)
+
   #:fast-defaults
   ([unresolved?
     (define (wrap-proc unresolved) unresolved)
@@ -121,6 +124,9 @@
   (extract-proc comonad)
   (duplicate-proc comonad)
   (extend-proc comonad)
+
+  #:requires
+  (extract)
 
   #:fast-defaults
   ([pair?
@@ -180,6 +186,9 @@
   (return-proc monad)
   (flatmap-proc monad)
   (join-proc monad)
+
+  #:requires
+  (return-proc)
 
   #:fast-defaults
   ([list?
@@ -333,6 +342,9 @@
   (pure-proc applicative)
   (fapply-proc applicative)
 
+  #:requires
+  (pure-proc fapply-proc)
+
   #:fast-defaults
   ([list?
     (define (pure-proc list) list-return)
@@ -394,6 +406,9 @@
 ;;
 (define-generics functor
   (fmap-proc functor)
+
+  #:requires
+  (fmap-proc)
 
   #:fast-defaults
   ([list?
