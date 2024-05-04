@@ -57,6 +57,7 @@
  spork/thunk-extras
  spork/future-extras
  spork/pair-extras
+ spork/either
  spork/curried)
 
 ;; The struct unresolved is a trivial, temporary context
@@ -191,7 +192,10 @@
   (return-proc)
 
   #:fast-defaults
-  ([list?
+  ([either?
+    (define (return-proc either) left)
+    (define (flatmap-proc either) either-flatmap)]
+   [list?
     (define (return-proc list) list-return)
     (define (flatmap-proc list) list-flatmap)
     (define (join-proc list) list-join)]
@@ -205,7 +209,7 @@
     (define (return-proc stream) stream-return)
     (define (flatmap-proc stream) stream-flatmap)
     (define (join-proc stream) stream-join)]
-   
+
    [sequence?
     (define (return-proc seq) sequence-return)
     (define (flatmap-proc seq) sequence-flatmap)
@@ -216,7 +220,7 @@
     (define (return-proc function) function-return)
     (define (flatmap-proc function) function-flatmap)
     (define (join-proc function) function-join)]
-   
+
    [trivial?
     (define (return-proc trivial) (wrap-proc trivial))
     (define (flatmap-proc trivial) trivial-flatmap)
@@ -257,7 +261,7 @@
                mx))))
 
 (define (>>= mx . fs)
-  (cond [(= (length fs) 1) (flatmap (car fs) mx)]        
+  (cond [(= (length fs) 1) (flatmap (car fs) mx)]
         [(null? fs) mx]
         [#t (apply >>= (flatmap (car fs) mx) (cdr fs))]))
 
@@ -417,7 +421,7 @@
     (define (fmap-proc vector) vector-fmap)]
    [stream?
     (define (fmap-proc stream) stream-fmap)])
-  
+
   #:defaults
   ([applicative?
     (define (fmap-proc applicative) applicative-fmap)]

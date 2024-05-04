@@ -75,3 +75,26 @@
 @defproc[(>>> [a arrow?] ...) arrow?]{
   Left-to-right composition of arrows.
 }
+
+@subsection{Arrow Choice}
+@defthing[gen:arrow-choice any/c]{
+}
+
+@defproc[(choose-left [f arrow-choice?]) arrow-choice?]{
+}
+
+@defproc[(choose-right [f arrow-choice?]) arrow-choice?]{
+
+}
+
+@defproc[(choose [f arrow-choice?] [g arrow-choice?]) arrow-choice?]{
+}
+
+@defproc[(fanin [f arrow-choice?] [g arrow-choice?]) arrow-choice?]{
+}
+
+@defproc[(+++ [f arrow-choice?] [g arrow-choice?] [h arrow-choice] ...) arrow-choice?]{
+}
+
+@defproc[(/// [f arrow-choice?] [g arrow-choice?] [h arrow-choice] ...) arrow-choice?]{
+}

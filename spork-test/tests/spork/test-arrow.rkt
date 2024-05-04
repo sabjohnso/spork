@@ -3,6 +3,7 @@
 (module+ test
   (require
    spork/infix-notation spork/category spork/arrow spork/functor spork/function-extras
+   spork/either
    rackunit rackunit/spec)
 
   (describe "the arrow protocol"
@@ -56,12 +57,13 @@
            (check-equal?
             (simple-run (split (simple symbol?) (simple symbol->string)) '(x . y))
             '(#t . "y"))))
-       
+
        (describe "fanout"
          (it "returns an arrow applying both input arrows to its input"
            (check-equal?
             (simple-run (fanout (simple symbol?) (simple symbol->string)) 'x)
             '(#t . "x")))))
+
      (it "provides operators for infix notation"
        (describe "&&&"
          (it "is the same as fanout"
@@ -82,7 +84,7 @@
            (check-equal?
             (simple-run ((simple symbol?) `*** (simple symbol->string)) '(x . y))
             '(#t . "y"))
-           
+
            (check-equal?
             (simple-run ((simple exact?) `***
                          (simple positive?) `***
@@ -95,11 +97,61 @@
            (check-equal? (simple-run ((simple symbol->string) `>>> (simple string-length)) 'abc)
                          3))))))
 
+  (describe "arrow choice"
+    (it "provides the choose-left, choose-right, choose and fanin functions"
+      (describe "choose-left"
+        (it "accepts an arrow and returns an arrow transforming `left` inputs"
+          (define sqr-left (choose-left sqr))
+          (check-equal? (sqr-left (left 3))  (left 9))
+          (check-equal? (sqr-left (right 3)) (right 3))))
+
+      (describe "choose-right"
+        (it "accepts an arrow and returns an arrow transforming `right` inputs"
+          (define sqr-right (choose-right sqr))
+          (check-equal? (sqr-right (left 3))  (left 3))
+          (check-equal? (sqr-right (right 3)) (right 9))))
+
+      (describe "choose"
+        (it "accepts too arrows and return and arrow transforming `left` and `right` inputs"
+          (define f (choose sqr number->string))
+          (check-equal? (f (left 3)) (left 9))
+          (check-equal? (f (right 3)) (right "3"))))
+
+      (describe "fanin"
+        (it "accepts too arrows and return and arrow transforming `left` and `right` inputs"
+          (define f (fanin number->string symbol->string))
+          (check-equal? (f (left 3)) "3")
+          (check-equal? (f (right 'x)) "x"))))
+
+    (it "provides a couple of opperators corresponding to choose and fanin"
+      (describe "+++"
+        (it "is the same as choose for to inputs"
+          (check-equal? ((sqr `+++ number->string) (left 3)) (left 9))
+          (check-equal? ((sqr `+++ number->string) (right 3)) (right "3")))
+        (it "is variadic"
+          (check-equal? ((sqr `+++ symbol->string `+++ list) (left 3))
+                        (left 9))
+          (check-equal? ((sqr `+++ symbol->string `+++ list) (right (left 'x)))
+                        (right (left "x")))
+          (check-equal? ((sqr `+++ symbol->string `+++ list) (right (right 'x)))
+                        (right (right '(x))))))
+      (describe "///"
+        (it "is the same as fanin for two inputs"
+          (check-equal? ((number->string `/// symbol->string) (left 3))  "3")
+          (check-equal? ((number->string `/// symbol->string) (right 'x)) "x"))
+        (it "is variadic"
+          (check-equal? ((number->string `/// symbol->string `/// identity) (left 3))
+                        "3")
+          (check-equal? ((number->string `/// symbol->string `/// identity) (right (left 'x)))
+                        "x")
+          (check-equal? ((number->string `/// symbol->string `/// identity) (right (right "y")))
+                        "y")))))
+
   (describe "the function arrow"
     (describe "arr"
       (it "lifts a function into the function arrow, but doesn't really do anything"
         (check-equal? ((sqr `>>> (arr number->string)) 3) "9")
-        (check-equal? (((arr sqr) `>>> number->string) 3) "9") 
+        (check-equal? (((arr sqr) `>>> number->string) 3) "9")
         (check-equal? (((arr sqr) `>>> (arr number->string)) 3) "9")))
 
     (describe "fst"
@@ -117,4 +169,3 @@
     (describe "fanout"
       (it "returns a function arrow consing the results of applying the input arrows"
         (check-equal? ((fanout sqr number->string) 3) '(9 . "3"))))))
-

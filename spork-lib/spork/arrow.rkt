@@ -17,9 +17,15 @@
     [***        (->* () () #:rest (listof arrow?) arrow?)]
     [arrow-comp (-> arrow? arrow? arrow?)]
     [<<<        (->* () () #:rest (listof arrow?) arrow?)]
-    [>>>        (->* () () #:rest (listof arrow?) arrow?)]))
+    [>>>        (->* () () #:rest (listof arrow?) arrow?)]
+    [choose-left (-> arrow-choice? arrow-choice?)]
+    [choose-right (-> arrow-choice? arrow-choice?)]
+    [choose (-> arrow-choice? arrow-choice? arrow-choice?)]
+    [fanin (-> arrow-choice? arrow-choice? arrow-choice?)]
+    [+++ (->* (arrow-choice? arrow-choice?) () #:rest (listof arrow-choice?) arrow-choice?)]
+    [/// (->* (arrow-choice? arrow-choice?) () #:rest (listof arrow-choice?) arrow-choice?)]))
 
-  (require racket/generic spork/curried spork/category spork/function-extras)
+  (require racket/generic spork/curried spork/category spork/function-extras spork/either)
 
    (define (id-comp id1 id2) id)
 
@@ -140,7 +146,69 @@
      (cons x x))
 
    (define (derived-fanout f g)
-     (>>> (arr dup) (split f g))))
+     (>>> (arr dup) (split f g)))
 
+
+   (define-generics arrow-choice
+     (choose-left-proc arrow-choice)
+     (choose-right-proc arrow-choice)
+     (choose-proc arrow-choice)
+     (fanin-proc arrow-choice)
+
+     #:defaults
+     ([function?
+       (define (choose-left-proc function) function-choose-left)
+       (define (choose-right-proc function) function-choose-right)
+       (define (choose-proc function) function-choose)
+       (define (fanin-proc function) function-fanin)])
+
+     #:fallbacks
+     ((define (choose-left-proc arrow-choice) derived-choose-left)
+      (define (choose-right-proc arrow-choice) derived-choose-right)
+      (define (choose-proc arrow-choice) derived-choose)
+      (define (fanin-proc arrow-choice) derived-fanin)))
+
+   (define (choose-left f)
+     ((choose-left-proc f) f))
+
+   (define (choose-right f)
+     ((choose-right-proc f) f))
+
+   (define-curried (choose f g)
+     (match* (f g)
+       [((arr f) (arr g)) (arr (choose f g))]
+       [(f (arr g)) ((choose-proc f) f ((arr-proc f) g))]
+       [((arr f) g) ((choose-proc g) ((arr-proc g) f) g)]
+       [(f g) ((choose-proc f) f g)]))
+
+   (define-curried (fanin f g)
+     (match* (f g)
+       [((arr f) (arr g)) (arr (fanin f g))]
+       [(f (arr g)) ((fanin-proc f) f ((arr-proc f) g))]
+       [((arr f) g) ((fanin-proc g) ((arr-proc g) f) g)]
+       [(f g) ((fanin-proc f) f g)]))
+
+   (define (+++ f g . hs)
+     (if (null? hs) (choose f g)
+       (choose f (apply +++ g hs))))
+
+   (define (/// f g . hs)
+     (if (null? hs) (fanin f g)
+       (fanin f (apply /// g hs))))
+
+   (define (derived-choose-left f)
+     (choose f (arr identity)))
+
+   (define (derived-choose-right f)
+     (choose (arr identity) f))
+
+   (define (derived-choose f g)
+     ((choose-left f) `>>> (arr either-swap) `>>> (choose-left g) `>>> (arr either-swap)))
+
+   (define (derived-fanin f g)
+     ((choose f g) `>>>
+      (arr (match-lambda
+             [(left x) x]
+             [(right y) y])))))
 
 (require (submod "." arrow-details))
