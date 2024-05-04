@@ -1,7 +1,10 @@
 #lang scribble/doc
 
-@begin[(require racket racket/sandbox scribble/eval racket/generic spork/functor
-                (except-in scribble/manual link) 
+@begin[
+  (require
+    scribble/eval
+    (except-in racket #%app) racket/sandbox  racket/generic 
+                (except-in scribble/manual link)
          (for-syntax racket scribble/eval spork/functor)
          (for-label racket spork/functor racket/generic syntax/stx))]
 
@@ -9,7 +12,7 @@
    (parameterize ([sandbox-output 'string]
                   [sandbox-error-output 'string]
                   [sandbox-memory-limit 50])
-      (make-evaluator 'racket  #:requires '(spork/functor))))
+      (make-evaluator 'racket  #:requires '(spork))))
       
 
 @title[#:tag "functor"]{Functor}
@@ -100,7 +103,7 @@ modularity and interoperability.
 @examples[#:eval functor-eval
   (struct my-struct (value)
     #:methods gen:functor
-    ((define (fmap-prooc _) my-struct-fmap)))
+   ((define (fmap-proc _) my-struct-fmap)))
 
   (define (my-struct-fmap f mx)
     (my-struct (f (my-struct-value mx))))
