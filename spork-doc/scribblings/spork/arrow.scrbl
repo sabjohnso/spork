@@ -56,6 +56,7 @@
   Return an arrow acting on the second item of a pair with the
   argument arrow. }
 
+@subsubsection{Split}
 @defproc[(split [a arrow?] [b arrow?]) arrow?]{
   Return an arrow acting on both items in a pair with the first and
   second argument arrows. }
@@ -63,38 +64,54 @@
 @defproc[(*** [a arrow?] ...) arrow?]{
   Return an arrow splitting the input across the argument arrows.
 }
+@defproc[(^** [f function?] [a arrow?]) arrow?]{}
+@defproc[(**^[a arrow?] [f function?] ) arrow?]{}
+@defproc[(^*^[f function?] [g function?] ) arrow?]{}
 
+@subsubsection{Fanout}
+@defproc[(fanout [a arrow?] [b arrow?]) arrow?]{}
 @defproc[(&&& [a arrow?] ...) arrow?]{
   Return an arrow sending the input to each of the argument arrrows.
 }
+@defproc[(^&& [f function?] [a arrow?]) arrow?]{}
+@defproc[(&&^[a arrow?] [f function?] ) arrow?]{}
+@defproc[(^&^[f function?] [g function?] ) arrow?]{}
 
+@subsubsection{Right-to-left arrow composition}
 @defproc[(<<< [a arrow?] ...) arrow?]{
   Right-to-left composition of arrows.
 }
+@defproc[(^<< [f function?] [a arrow?]) arrow?]{}
+@defproc[(<<^[a arrow?] [f function?] ) arrow?]{}
+@defproc[(^<^[f function?] [g function?] ) arrow?]{}
 
+
+@subsubsection{Left-to-right arrow composition}
 @defproc[(>>> [a arrow?] ...) arrow?]{
   Left-to-right composition of arrows.
 }
+@defproc[(^>> [f function?] [a arrow?]) arrow?]{}
+@defproc[(>>^[a arrow?] [f function?] ) arrow?]{}
+@defproc[(^>^[f function?] [g function?] ) arrow?]{}
 
 @subsection{Arrow Choice}
-@defthing[gen:arrow-choice any/c]{
-}
+@defthing[gen:arrow-choice any/c]{}
 
-@defproc[(choose-left [f arrow-choice?]) arrow-choice?]{
-}
+@defproc[(choose-left [f arrow-choice?]) arrow-choice?]{}
 
-@defproc[(choose-right [f arrow-choice?]) arrow-choice?]{
+@defproc[(choose-right [f arrow-choice?]) arrow-choice?]{}
 
-}
+@defproc[(choose [f arrow-choice?] [g arrow-choice?]) arrow-choice?]{}
+@defproc[(fanin [f arrow-choice?] [g arrow-choice?]) arrow-choice?]{}
 
-@defproc[(choose [f arrow-choice?] [g arrow-choice?]) arrow-choice?]{
-}
+@subsubsection{Choose}
+@defproc[(+++ [f arrow-choice?] [g arrow-choice?] [h arrow-choice] ...) arrow-choice?]{}
 
-@defproc[(fanin [f arrow-choice?] [g arrow-choice?]) arrow-choice?]{
-}
+@defproc[(^++ [f function?] [a arrow-choice?]) arrow-choice?]{}
+@defproc[(++^[a arrow-choice?] [f function?] ) arrow-choice?]{}
+@defproc[(^+^[f function?] [g function?] ) arrow-choice?]{}
 
-@defproc[(+++ [f arrow-choice?] [g arrow-choice?] [h arrow-choice] ...) arrow-choice?]{
-}
-
-@defproc[(/// [f arrow-choice?] [g arrow-choice?] [h arrow-choice] ...) arrow-choice?]{
-}
+@defproc[(/// [f arrow-choice?] [g arrow-choice?] [h arrow-choice]...) arrow-choice?]{}
+@defproc[(^// [f function?] [a arrow-choice?]) arrow-choice?]{}
+@defproc[(//^[a arrow-choice?] [f function?] ) arrow-choice?]{}
+@defproc[(^/^[f function?] [g function?] ) arrow-choice?]{}
