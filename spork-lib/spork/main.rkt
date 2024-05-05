@@ -10,7 +10,8 @@
   spork/tag
   spork/union
   spork/optional
-  spork/expect))
+  spork/expect
+  spork/stateful))
 
 (require
  spork/arrow
@@ -21,4 +22,5 @@
  spork/tag
  spork/union
  spork/optional
- spork/expect)
+ spork/expect
+ spork/stateful)
