@@ -323,13 +323,13 @@
   (syntax-parse stx
     [(_ e:expr) (syntax/loc stx e)]
     [(_ e:expr es:expr ...+)
-     (with-syntax ([ignored (generate-temporaries '("ignored"))])
+     (with-syntax ([ignored (generate-temporary 'ignored)])
        (syntax/loc stx
          (flatmap (λ (ignored) (begin/monad es ...)) e)))]))
 
 (define-syntax (let/monad stx)
   (syntax-parse stx
-    [(_ ([x:id mx:expr]) (begin/monad e es ...))
+    [(_ ([x:id mx:expr]) e es ...)
      (syntax/loc stx
        (flatmap (λ (x) (begin/monad e es ...)) mx))]
 
