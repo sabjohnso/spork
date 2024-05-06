@@ -11,7 +11,10 @@
   spork/union
   spork/optional
   spork/expect
-  spork/stateful))
+  spork/stateful
+  spork/env
+  spork/kleisli
+  spork/cokleisli))
 
 (require
  spork/arrow
@@ -23,4 +26,7 @@
  spork/union
  spork/optional
  spork/expect
- spork/stateful)
+ spork/stateful
+ spork/env
+ spork/kleisli
+ spork/cokleisli)

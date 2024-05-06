@@ -175,7 +175,7 @@ infix notation.
   Successively applies a function wrapped in an applicative context to values
   wrapped in the same applicative context.}
 
-@defproc[(<*> [mf applicative?] [mx applicative?]) applicative?]{
+@defproc[(<*> [mf applicative?] [mx applicative?] ...+) applicative?]{
   A synonym for @racket[fapply*] that may be preferable with infix notation.}
 
 @;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -189,6 +189,15 @@ infix notation.
       procedure monadic mapping.}
     @item{join-proc : accepts one argument and returns the procedure
       for flattening the monad context.}]}
+
+@defform[
+  (begin/monad monad-expr ...+)
+]{}
+
+@defform/subs[
+  (let/monad (monad-binding ...+) monad-expr ...+)
+  ([monad-binding (id monad-expr)])
+]{}
 
 @defproc[(monad? [v any/c]) boolean?]
 
@@ -273,10 +282,20 @@ unembellished values and are monads and comonads.
 
 @subsection{Built-in Contexts}
 @subsubsection{Lists}
+@examples[#:eval functor-eval
+  (let/monad ([x '(1 2)]
+              [y '(3 4)])
+    (return (+ x y)))]
+
 @subsubsection{Nonempty Lists}
+@examples[#:eval functor-eval
+  (duplicate '(1 2 3))
+  (extend length '(a b c))]
+
 @subsubsection{Vectors}
 @subsubsection{Streams}
 @subsubsection{Nonempty Streams}
+
 @subsubsection{Pairs}
 @subsubsection{Functions}
 @subsubsection{Thunks}
