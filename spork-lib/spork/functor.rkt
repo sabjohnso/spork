@@ -130,7 +130,15 @@
   (extract)
 
   #:fast-defaults
-  ([pair?
+  ([nonempty-list?
+    (define (extract-proc list) car)
+    (define (duplicate-proc list) nonempty-list-duplicate)
+    (define (extend-proc list) nonempty-list-extend)]
+   [nonempty-stream?
+    (define (extract-proc stream) stream-first)
+    (define (duplicate-proc stream) nonempty-stream-duplicate)
+    (define (extend-proc stream) nonempty-stream-extend)]
+   [pair?
     (define (extract-proc pair) car)
     (define (duplicate-proc pair) pair-duplicate)
     (define (extend-proc pair) pair-extend)])

@@ -4,6 +4,8 @@
  (contract-out
   (struct stateful ([proc (-> any/c pair?)]))
   [stateful-run (-> any/c stateful? pair?)]
+  [stateful-exec (-> any/c stateful? any/c)]
+  [stateful-eval (-> any/c stateful? pair?)]
   [stateful-return (-> any/c stateful?)]
   [stateful-get stateful?]
   [stateful-select (-> (-> any/c any/c) stateful?)]
@@ -23,6 +25,12 @@
 
 (define (stateful-run s mx)
   ((stateful-proc mx) s))
+
+(define (stateful-eval s mx)
+  (car (stateful-run s mx)))
+
+(define (stateful-exec s mx)
+  (cdr (stateful-run s mx)))
 
 (define (stateful-return x)
   (stateful (λ (s) (cons x s))))
