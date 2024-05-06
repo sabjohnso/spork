@@ -16,7 +16,10 @@
   [function-choose-left  (-> (-> any/c any/c) (-> either? either?))]
   [function-choose-right (-> (-> any/c any/c) (-> either? either?))]
   [function-choose       (-> (-> any/c any/c) (-> any/c any/c) (-> either? either?))]
-  [function-fanin        (-> (-> any/c any/c) (-> any/c any/c) (-> either? any/c))]))
+  [function-fanin        (-> (-> any/c any/c) (-> any/c any/c) (-> either? any/c))]
+  [function-ask function?]
+  [function-select (-> (-> any/c any/c) function?)]
+  [function-local (-> (-> any/c any/c) function? function?)]))
 
 (require spork/either)
 
@@ -36,6 +39,8 @@
   (λ (e) ((mf e) (mx e))))
 
 (define function-ask identity)
+
+(define (function-select f) f)
 
 (define (function-local f mx)
   (compose mx f))
