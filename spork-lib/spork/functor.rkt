@@ -216,12 +216,7 @@
    [stream?
     (define (return-proc stream) stream-return)
     (define (flatmap-proc stream) stream-flatmap)
-    (define (join-proc stream) stream-join)]
-
-   [sequence?
-    (define (return-proc seq) sequence-return)
-    (define (flatmap-proc seq) sequence-flatmap)
-    (define (join-proc seq) (sequence-join))])
+    (define (join-proc stream) stream-join)])
 
   #:defaults
   ([function?
