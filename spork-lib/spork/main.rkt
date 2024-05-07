@@ -14,7 +14,8 @@
   spork/stateful
   spork/env
   spork/kleisli
-  spork/cokleisli))
+  spork/cokleisli
+  spork/either))
 
 (require
  spork/arrow
@@ -29,4 +30,5 @@
  spork/stateful
  spork/env
  spork/kleisli
- spork/cokleisli)
+ spork/cokleisli
+ spork/either)

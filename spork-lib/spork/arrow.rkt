@@ -6,44 +6,50 @@
   (provide
    id id? id-comp
    gen:arrow
+   gen:arrow-choice
    (struct-out arr)
    (contract-out
-    [arrow?       predicate/c]
-    [fst          (-> arrow? arrow?)]
-    [snd          (-> arrow? arrow?)]
-    [fanout       (-> arrow? arrow? arrow?)]
-    [&&&          (->* () () #:rest (listof arrow?) arrow?)]
-    [^&&          (-> function? arrow? arrow?)]
-    [&&^          (-> arrow? function? arrow?)]
-    [^&^          (-> function? function? arrow?)]
-    [split        (-> arrow? arrow? arrow?)]
-    [***          (->* () () #:rest (listof arrow?) arrow?)]
-    [^**          (-> function? arrow? arrow?)]
-    [**^          (-> arrow? function? arrow?)]
-    [^*^          (-> function? function? arrow?)]
-    [arrow-comp   (-> arrow? arrow? arrow?)]
-    [<<<          (->* () () #:rest (listof arrow?) arrow?)]
-    [^<<          (-> function? arrow? arrow?)]
-    [<<^          (-> arrow? function? arrow?)]
-    [^<^          (-> function? function? arrow?)]
-    [>>>          (->* () () #:rest (listof arrow?) arrow?)]
-    [^>>          (-> function? arrow? arrow?)]
-    [>>^          (-> arrow? function? arrow?)]
-    [^>^          (-> function? function? arrow?)]
-    [choose-left  (-> arrow-choice? arrow-choice?)]
-    [choose-right (-> arrow-choice? arrow-choice?)]
-    [choose       (-> arrow-choice? arrow-choice? arrow-choice?)]
-    [fanin        (-> arrow-choice? arrow-choice? arrow-choice?)]
-    [+++          (->* (arrow-choice? arrow-choice?) () #:rest (listof arrow-choice?) arrow-choice?)]
-    [^++          (-> function? arrow-choice? arrow-choice?)]
-    [++^          (-> arrow-choice? function? arrow-choice?)]
-    [^+^          (-> function? function? arrow-choice?)]
-    [///          (->* (arrow-choice? arrow-choice?) () #:rest (listof arrow-choice?) arrow-choice?)]
-    [^//          (-> function? arrow-choice? arrow-choice?)]
-    [//^          (-> arrow-choice? function? arrow-choice?)]
-    [^/^          (-> function? function? arrow-choice?)]))
+    ;; arrow
+    [arrow?        predicate/c]
+    [fst           (-> arrow? arrow?)]
+    [snd           (-> arrow? arrow?)]
+    [fanout        (-> arrow? arrow? arrow?)]
+    [&&&           (->* () () #:rest (listof arrow?) arrow?)]
+    [^&&           (-> function? arrow? arrow?)]
+    [&&^           (-> arrow? function? arrow?)]
+    [^&^           (-> function? function? arrow?)]
+    [split         (-> arrow? arrow? arrow?)]
+    [***           (->* () () #:rest (listof arrow?) arrow?)]
+    [^**           (-> function? arrow? arrow?)]
+    [**^           (-> arrow? function? arrow?)]
+    [^*^           (-> function? function? arrow?)]
+    [arrow-comp    (-> arrow? arrow? arrow?)]
+    [<<<           (->* () () #:rest (listof arrow?) arrow?)]
+    [^<<           (-> function? arrow? arrow?)]
+    [<<^           (-> arrow? function? arrow?)]
+    [^<^           (-> function? function? arrow?)]
+    [>>>           (->* () () #:rest (listof arrow?) arrow?)]
+    [^>>           (-> function? arrow? arrow?)]
+    [>>^           (-> arrow? function? arrow?)]
+    [^>^           (-> function? function? arrow?)]
 
-  (require racket/generic spork/curried spork/category spork/function-extras spork/either)
+    ;; arrow-choice
+    [arrow-choice? predicate/c]
+    [choose-left   (-> arrow-choice? arrow-choice?)]
+    [choose-right  (-> arrow-choice? arrow-choice?)]
+    [choose        (-> arrow-choice? arrow-choice? arrow-choice?)]
+    [fanin         (-> arrow-choice? arrow-choice? arrow-choice?)]
+    [+++           (->* (arrow-choice? arrow-choice?) () #:rest (listof arrow-choice?) arrow-choice?)]
+    [^++           (-> function? arrow-choice? arrow-choice?)]
+    [++^           (-> arrow-choice? function? arrow-choice?)]
+    [^+^           (-> function? function? arrow-choice?)]
+    [///           (->* (arrow-choice? arrow-choice?) () #:rest (listof arrow-choice?) arrow-choice?)]
+    [^//           (-> function? arrow-choice? arrow-choice?)]
+    [//^           (-> arrow-choice? function? arrow-choice?)]
+    [^/^           (-> function? function? arrow-choice?)]))
+
+  (require racket/generic
+           spork/curried spork/category spork/function-extras spork/infix-notation spork/either)
 
    (define (id-comp id1 id2) id)
 
@@ -110,8 +116,9 @@
        [(f g) ((arrow-comp-proc f) f g)]))
 
    (define (<<< . fs)
+
      (match fs
-       [(list) arr-id]
+       [(list) id]
        [(list f) f]
        [(list f g) (arrow-comp f g)]
        [(list f g h hs ...) (apply <<< (arrow-comp f g) h hs)]))
