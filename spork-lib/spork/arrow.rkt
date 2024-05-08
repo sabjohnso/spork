@@ -69,6 +69,29 @@
 
    (define arr-id (arr identity))
 
+   ;;
+   ;; (= (arr id)
+   ;;    arrow-id)
+   ;;
+   ;; (= (arr (f `>>> g)
+   ;;         ((arr f) `>>> (arr g))))
+
+   ;; (= (fst (arr f))
+   ;;    (arr (fst f)))
+
+   ;; (= (fst (f `>>> g))
+   ;;    ((fst f) `>>> (fst g)))
+
+   ;; (= ((fst f) `>>> arr (id `*** g))
+   ;;    ((arr (id *** g)) `>>> first f))
+
+   ;; (= (fst (fst f) `>>> (arr assoc))
+   ;;    ((arr assoc) `>>> (fst f)))
+
+   ;; where
+   ;; (= (assoc '((a . b) . c))
+   ;;    '(a . (b . c)))
+
    (define-generics arrow
      (arr-proc arrow)
      (split-proc arrow)
