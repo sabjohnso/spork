@@ -6,6 +6,8 @@
  gen:monad
  gen:applicative
  gen:functor
+ gen:monad-zero
+ gen:monad-plus
 
  begin/monad
  let/monad
@@ -44,7 +46,15 @@
 
   [functor? predicate/c]
   [fmap (curried-> (-> any/c any/c) functor? functor?)]
-  [<$> (-> (-> any/c any/c) functor? functor?)]))
+  [<$> (-> (-> any/c any/c) functor? functor?)]
+
+  [monad-zero? predicate/c]
+  [mzero? predicate/c]
+  [mzero mzero?]
+
+  [monad-plus? predicate/c]
+  [mplus (-> monad-plus? monad-plus? monad-plus?)]
+  (<+> (->* () () #:rest (listof monad-plus?) monad-plus?))))
 
 (require
  (for-syntax racket racket/syntax syntax/parse)
@@ -58,7 +68,8 @@
  spork/future-extras
  spork/pair-extras
  spork/either
- spork/curried)
+ spork/curried
+ spork/tag)
 
 ;; The struct unresolved is a trivial, temporary context
 ;; used to hold a value injected into some context
@@ -449,3 +460,45 @@
        (let/functor ([x mx])
          (let/functor ([ys mys] ...)
            es ...)))]))
+
+(define-tag mzero)
+(define (mzero-mplus x y)
+  (if (mzero? x) y x))
+
+;;
+;; Monad Zero
+;; ==========
+;;
+(define-generics monad-zero
+  (mzero-value monad-zero)
+  #:fast-defaults
+  ([list?
+    (define (mzero-value list) '())]
+   [vector?
+    (define (mzero-value vector) #())]
+   [stream?
+    (define (mzero-value stream) empty-stream)]))
+
+;;
+;; Monad Plus
+;; ==========
+;;
+(define-generics monad-plus
+  (mplus-proc monad-plus)
+  #:fast-defaults
+  ([mzero? (define (mplus-proc -mzero) mzero-mplus)]
+   [list? (define (mplus-proc list) append)]
+   [vector? (define (mplus-proc vector) vector-append)]
+   [stream? (define (mplus-proc stream) stream-append)]))
+
+(define (mplus mx my)
+  (match* (mx my)
+    [((? mzero?) my) my]
+    [(mx (? mzero?)) mx]
+    [(mx my) ((mplus-proc mx) mx my)]))
+
+(define (<+> . mxs)
+  (cond [(= (length mxs) 2) (mplus (car mxs) (cadr mxs))]
+        [(> (length mxs) 2) (apply <+> (mplus (car mxs) (cadr mxs)) (cddr mxs))]
+        [(= (length mxs) 1) (car mxs)]
+        [(null? mxs) mzero]))

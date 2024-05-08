@@ -15,10 +15,12 @@
   (some value)
   #:methods gen:monad
   ((define (return-proc this) some)
-   (define (flatmap-proc this) optional-flatmap)))
+   (define (flatmap-proc this) optional-flatmap))
+
+  #:methods gen:monad-zero
+  ((define (monad-zero-value this) (none))))
 
 (define (optional-flatmap f mx)
   (match mx
     [(some x) (f x)]
     [mx mx]))
-

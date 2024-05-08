@@ -11,6 +11,8 @@ Spork is a utility library.
 
 @include-section["spork/functor.scrbl"]
 @include-section["spork/arrow.scrbl"]
+@include-section["spork/kleisli.scrbl"]
+@include-section["spork/cokleisli.scrbl"]
 @include-section["spork/infix-notation.scrbl"]
 @include-section["spork/curried.scrbl"]
 @include-section["spork/tag.scrbl"]
