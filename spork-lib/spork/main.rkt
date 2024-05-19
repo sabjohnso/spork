@@ -15,7 +15,8 @@
   spork/env
   spork/kleisli
   spork/cokleisli
-  spork/either))
+  spork/either
+  spork/tape))
 
 (require
  spork/arrow
@@ -31,4 +32,5 @@
  spork/env
  spork/kleisli
  spork/cokleisli
- spork/either)
+ spork/either
+ spork/tape)
