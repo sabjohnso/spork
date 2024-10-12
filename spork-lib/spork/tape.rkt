@@ -79,15 +79,6 @@
 
 (define (tape-return x) (tape (list x) '()))
 
-#;
-(define (tape-join xss)
-  (define (recur xss accum)
-    (match xss
-      [(tape (list tp tps ...) takeup) (recur (tape tps takeup) (tape-splice accum tp))]
-      [(tape '() (list tp tps ...)) (recur (tape '()  tps) (tape-splice accum tp))]
-      [(tape '() '()) accum]))
-(recur xss empty-tape))
-
 (define (tape-join xss)
   (tape (tape->list (apply tape-append (tape-feed xss)))
         (tape->list (apply tape-append (fmap tape-reverse (tape-takeup xss))))))

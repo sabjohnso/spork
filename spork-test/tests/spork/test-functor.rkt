@@ -494,7 +494,7 @@
     (check-true (applicative? (stream 'a 'b)))
     (check-equal? (stream->list (fapply (stream symbol->string) (stream 'a 'b))) '("a" "b"))
     (check-equal? (stream->list (fapply (pure symbol->string) (stream 'a 'b))) '("a" "b"))
-    (check-equal? (stream->list (fapply (stream symbol->string) (pure 'a))) '("a")))g
+    (check-equal? (stream->list (fapply (stream symbol->string) (pure 'a))) '("a")))
 
   (it "is a functor"
     (check-true (functor? (stream 'a 'b)))
