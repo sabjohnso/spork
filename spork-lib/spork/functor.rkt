@@ -347,7 +347,11 @@
      (syntax/loc stx
        (flatmap (λ (x) (begin/monad e es ...)) mx))]
 
-    [(_ ([x:id mx:expr] [y:id my:expr] ...+) e es ...)
+    [(_ ([target:expr source:expr]) body:expr ...+)
+     (syntax/loc stx
+       (flatmap (match-lambda [target (begin/monad body ...)]) source))]
+
+    [(_ ([x:expr mx:expr] [y:expr my:expr] ...+) e es ...)
      (syntax/loc stx
        (let/monad ([x mx])
          (let/monad ([y my] ...)
@@ -407,16 +411,36 @@
   (apply fapply* mf mx mys))
 
 
+(define-syntax (curried-match-lambda stx)
+  (syntax-parse stx
+    [(_ (pattern:expr) es:expr ...+)
+     (syntax/loc stx
+       (match-lambda [pattern es ...]))]
+    [(_ (pattern:expr patterns:expr ...+) es:expr ...+)
+     (syntax/loc stx
+       (match-lambda [pattern (curried-match-lambda (patterns ...) es ...)]))]))
+
 (define-syntax (let/applicative stx)
   (syntax-parse stx
     [(_ ([x:id mx:expr]) es ...+)
      (syntax/loc stx
        (fmap (λ (x) es ...) mx))]
+
+    [(_ ([target:expr source:expr]) es:expr ...+)
+     (syntax/loc stx
+       (fmap (match-lambda [target es ...]) source))]
+
     [(_ ([x:id mx:expr]
          [ys:id mys:expr] ...+)
-        es ...)
+        es:expr ...+)
      (syntax/loc stx
-       (fapply* (fmap (curry (λ (x ys ...) es ...)) mx) mys ...))]))
+       (fapply* (fmap (curry (λ (x ys ...) es ...)) mx) mys ...))]
+
+    [(_ ([target:expr source:expr]
+         [targets:expr sources:expr] ...+)
+        es:expr ...+)
+     (syntax/loc stx
+       (fapply* (fmap (curried-match-lambda (target targets ...) es ...) source) sources ...))]))
 
 
 ;; Functor
@@ -455,7 +479,11 @@
      (syntax/loc stx
        (fmap (λ (x) es ...) mx))]
 
-    [(_ ([x:id mx:expr] [ys:id mys:expr] ...+) es ...+)
+    [(_ ([target:expr source:expr]) es:expr ...+)
+     (syntax/loc stx
+       (fmap (match-lambda [target es ...]) source))]
+
+    [(_ ([x:expr mx:expr] [ys:expr mys:expr] ...+) es ...+)
      (syntax/loc stx
        (let/functor ([x mx])
          (let/functor ([ys mys] ...)

@@ -235,7 +235,14 @@
        (let/monad ([x (just 3)]
                    [y (nothing)])
          (return (+ x y)))
-       (nothing)))))
+       (nothing)))
+
+    (it "supports monad binding syntax with destructuring"
+      (check-equal?
+       (let/monad ([(cons x y) (just (cons 3 4))]
+                   [z          (just 5)])
+         (return (+ x y z)))
+       (just 12)))))
 
 (describe "the applicative protocol"
   (context "with an applicative type"
@@ -296,7 +303,14 @@
        (let/applicative ([x (make-ziplist 1 2)]
                          [y (make-ziplist 3 4)])
          (+ x y))
-       (make-ziplist 4 6)))))
+       (make-ziplist 4 6)))
+
+    (it "supports applicative binding syntax with destructuring"
+      (check-equal?
+       (let/applicative ([(cons a b) (make-ziplist (cons 1 2) (cons 3 4))]
+                         [(cons c d) (make-ziplist (cons 5 6) (cons 7 8))])
+         ((a `+ b) `* (c `+ d)))
+       (make-ziplist 33  105)))))
 
 (describe "the functor protocol"
   (context "with a functor type"
@@ -324,7 +338,13 @@
        (let/functor ([x (named "Bob" 3)]
                      [y (named "Bob" 4)])
          (+ x y))
-       (named "Bob" (named "Bob" 7))))))
+       (named "Bob" (named "Bob" 7))))
+
+    (it "supports functor binding syntax with destructuring"
+      (check-equal?
+       (let/functor ([(cons x _) (named "Bob" (cons 3 4))])
+         x)
+       (named "Bob" 3)))))
 
 
 (describe "the comonad protocol"
