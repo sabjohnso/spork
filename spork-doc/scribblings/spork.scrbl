@@ -23,6 +23,7 @@ Spork is a utility library.
 @include-section["spork/stateful.scrbl"]
 @include-section["spork/env.scrbl"]
 @include-section["spork/tape.scrbl"]
+@include-section["spork/parst.scrbl"]
 
 
 @section{Examples}

@@ -16,6 +16,7 @@
 
  (contract-out
   [unresolved? predicate/c]
+  [unresolved-value (-> unresolved? any/c)]
 
   [trivial? predicate/c]
   [unwrap (-> trivial? any/c)]
