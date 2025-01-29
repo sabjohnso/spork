@@ -63,8 +63,8 @@
 @defproc[(parser-push? [v any/c]) boolean?]{}
 
 @subsection{parser-peek}
-@defproc [(parser-peek [parser parser?]) (and/c parser? parser-peek?)]{}
-@defproc [(parser-peek? [v any/c]) boolean?]{}
+@defproc[(parser-peek [parser parser?]) (and/c parser? parser-peek?)]{}
+@defproc[(parser-peek? [v any/c]) boolean?]{}
 
 @subsection{Functor Parsers}
 

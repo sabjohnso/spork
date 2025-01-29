@@ -13,9 +13,7 @@
   @defform[(lambda-curried formals body ...+)]
   @defform/subs[
     (λ-curried formals body ...+)
-    ([formals (id ...+)])])]{
-  Produces a curried function.}
-
+    ([formals (id ...+)])])]{}
 @defform/subs[
   (define-curried (head formals ...+) body ...+)
   ([head id]
@@ -26,9 +24,7 @@
 @defform/subs[
   (curried-> dom ...+ range)
   ([dom dom-expr]
-   [range range-expr 
+   [range range-expr
           (values range-expr ...)
           any])]{
   A curried function contract.}
-   
-
