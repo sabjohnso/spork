@@ -16,7 +16,7 @@
     (describe "none"
       (it "is a nullary constructor for optional"
         (check-true (optional? (none)))))
-    
+
     (describe "some"
       (it "is an unary constructor for optional"
         (check-true (optional? (some 'x)))))
@@ -24,22 +24,16 @@
     (describe "none?"
       (it "recognizes optional values constructed with `none`"
         (check-true (none? (none))))
-      
-      (it "does not recognize optional values constructed with `some`"
-        (check-false (none? (some 'x))))
 
-      (it "only accepts optional values"
-        (check-exn exn:fail? (thunk (none? "something completely different")))))
+      (it "does not recognize optional values constructed with `some`"
+        (check-false (none? (some 'x)))))
 
     (describe "some?"
       (it "recognizes optional values constructed with `some`"
         (check-true (some? (some 'x))))
 
       (it "does not recognize optional values constructed with `none`"
-        (check-false (some? (none))))
-
-      (it "only accepts optional values"
-        (check-exn exn:fail? (thunk (some? "something completely different"))))))
+        (check-false (some? (none))))))
 
   (it "is a monad"
     (check-true (monad? (none)))
@@ -69,7 +63,7 @@
       (check-equal? ((none) `>>= some) (none))
       (check-equal? ((none) `>>= return) (none)))
 
-    (it "can use monad binding syntax"     
+    (it "can use monad binding syntax"
       (define (optional-safe-divide mx my)
         (let/monad ([x mx]
                     [y my])
@@ -88,7 +82,7 @@
       (check-equal? (fapply (some sqr) (some 3)) (some 9))
       (check-equal? (fapply (pure sqr) (some 3)) (some 9))
       (check-equal? (fapply (some sqr) (pure 3)) (some 9))
-      
+
       (check-equal? (fapply (some sqr) (none)) (none))
       (check-equal? (fapply (none) (some 3)) (none)))
 
@@ -110,7 +104,7 @@
       (check-equal? (optional-add (some 3) (some 4)) (some 7))
       (check-equal? (optional-add (none) (some 4)) (none))
       (check-equal? (optional-add (some 3) (none)) (none))))
-  
+
   (it "is a functor"
     (check-true (functor? (none)))
     (check-true (functor? (some 'x)))

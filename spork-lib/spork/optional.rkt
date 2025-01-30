@@ -1,12 +1,10 @@
 #lang racket
 
 (provide
+ (struct-out some)
+ (struct-out none)
  (contract-out
-  [optional? predicate/c]
-  [none? (-> optional? boolean?)]
-  [some? (-> optional? boolean?)]
-  [none (-> optional?)]
-  [some (-> any/c optional?)]))
+  [optional? predicate/c]))
 
 (require spork/union spork/functor)
 
