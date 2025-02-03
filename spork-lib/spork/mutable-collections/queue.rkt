@@ -2,6 +2,7 @@
 
 (provide
  (contract-out
+  [queue<%> interface?]
   [queue? predicate/c]
   [make-queue (-> queue?)]
   [queue-push-back! (-> queue? any/c void?)]

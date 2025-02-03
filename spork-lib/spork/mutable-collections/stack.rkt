@@ -2,6 +2,7 @@
 
 (provide
  (contract-out
+  [stack<%> interface?]
   [stack? predicate/c]
   [make-stack (-> stack?)]
   [stack-push! (-> stack? any/c void?)]
