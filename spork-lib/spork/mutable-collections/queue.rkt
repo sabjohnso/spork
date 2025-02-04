@@ -22,45 +22,48 @@
 (define (queue? v)
   (is-a? v queue<%>))
 
+(struct queue-data
+  (front back))
+
 (define queue%
   (class* object%
       (queue<%>)
     (super-new)
 
     (define mutex (make-mutex))
-    (define input-data '())
-    (define output-data '())
+    (define data (box (queue-data '() '())))
 
     (define/public (push-back! v)
-      (with-mutex mutex
-        (thunk
-         (set! input-data (cons v input-data)))))
+      (let loop ([current-data (unbox data)])
+        (match-let ([(queue-data front back) current-data])
+          (when (not (box-cas! data current-data (queue-data front (cons v back))))
+            (loop (unbox data))))))
 
-    (define (rearrange-data)
-      (when (null? output-data)
-        (set! output-data (reverse input-data))
-        (set! input-data '())))
+    (define (maybe-move-data-to-front current-data)
+      (match-let ([(queue-data front back) current-data])
+        (if (null? front)
+            (queue-data (reverse back) '())
+          current-data)))
 
     (define/public (pop-front!)
-      (with-mutex mutex
-        (thunk
-         (rearrange-data)
-         (if (null? output-data) (none)
-           (let ([result (car output-data)])
-             (set! output-data (cdr output-data))
-             (some result))))))
+      (let loop ([current-data (unbox data)])
+        (match-let ([(queue-data front back) (maybe-move-data-to-front current-data)])
+          (let-values ([(result updated-data)
+                        (if (null? front) (values (none) (queue-data front back))
+                          (values (some (car front))
+                                  (queue-data (cdr front) back)))])
+            (if (box-cas! data current-data updated-data) result
+              (loop (unbox data)))))))
 
     (define/public (clear!)
-      (with-mutex mutex
-        (thunk
-         (set! input-data '())
-         (set! output-data '()))))
+      (let loop ([current-data (unbox data)])
+        (when (not (box-cas! data current-data (queue-data '() '())))
+          (loop (unbox data)))))
 
     (define/public (empty?)
-      (with-mutex mutex
-        (thunk
-         (and (null? input-data)
-              (null? output-data)))))))
+      (match-let ([(queue-data front back) (unbox data)])
+        (and (null? front)
+             (null? back))))))
 
 (define (make-queue) (new queue%))
 

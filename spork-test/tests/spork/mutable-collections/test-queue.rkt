@@ -29,4 +29,14 @@
         (queue-push-back! queue 'y)
         (check-equal? (some 'x) (queue-pop-front! queue))
         (check-equal? (some 'y) (queue-pop-front! queue))
-        (check-equal? (none) (queue-pop-front! queue))))))
+        (check-equal? (none) (queue-pop-front! queue))))
+
+    (context "with a new queue"
+      (define queue (make-queue))
+      (it "should be safe for futures"
+        (let ([n 100])
+          (for/async ([i (in-range n)])
+            (queue-push-back! queue i))
+          (for/async ([i (in-range n)])
+            (check-false (none? (queue-pop-front! queue))))
+          (check-true (queue-empty? queue)))))))

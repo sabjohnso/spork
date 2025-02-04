@@ -56,3 +56,9 @@
 @defproc[(queue-empty? [queue queue?]) boolean?]{
   Return @racket[#t] if the input queue is empty.  Otherwise, return @racket[#f].
 }
+
+@section{Lock-free Stack}
+@defmodule[spork/mutable-collections/lock-free-stack]
+
+@section{Lock-free Queue}
+@defmodule[spork/mutable-collections/lock-free-queue]

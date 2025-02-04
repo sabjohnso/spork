@@ -35,4 +35,16 @@
         (stack-push! stack 'x)
         (stack-push! stack 'y)
         (stack-clear! stack)
-        (check-true (stack-empty? stack))))))
+        (check-true (stack-empty? stack))))
+
+    (context "with an empty stack"
+      (define stack (make-stack))
+      (it "it safe for futures"
+        (let ([n 1000])
+          (for/async ([i n])
+            (stack-push! stack i))
+
+          (for/async ([i n])
+            (check-false (none? (stack-pop! stack))))
+
+          (check-true (stack-empty? stack)))))))

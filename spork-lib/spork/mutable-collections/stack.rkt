@@ -13,8 +13,8 @@
 
 (define stack<%>
   (interface ()
-    [push! (->m any/c void?)]
-    [pop! (->m optional?)]
+    [push-front! (->m any/c void?)]
+    [pop-front! (->m optional?)]
     [clear! (->m void?)]
     [empty? (->m boolean?)]))
 
@@ -26,38 +26,35 @@
       (stack<%>)
     (super-new)
 
-    (define mutex (make-mutex))
-    (define data '())
+    (define data (box '()))
 
-    (define/public (push! value)
-      (with-mutex mutex
-        (thunk
-         (set! data (cons value data)))))
+    (define/public (push-front! value)
+      (let loop ([current-data (unbox data)])
+        (when (not (box-cas! data current-data (cons value current-data)))
+          (loop (unbox data)))))
 
-    (define/public (pop!)
-      (with-mutex mutex
-        (thunk
-         (if (null? data) (none)
-           (let ([result (car data)])
-             (set! data (cdr data))
-             (some result))))))
+    (define/public (pop-front!)
+      (let loop ([current-data (unbox data)])
+        (if (null? current-data) (none)
+            (if (box-cas! data current-data (cdr current-data)) (some (car current-data))
+              (loop (unbox data))))))
 
     (define/public (clear!)
-      (with-mutex mutex
-        (thunk
-         (set! data '()))))
+      (let loop ([current-data (unbox data)])
+        (when (not (box-cas! data current-data '()))
+          (loop (unbox data)))))
 
     (define/public (empty?)
-      (null? data))))
+      (null? (unbox data)))))
 
 (define (make-stack)
   (new stack%))
 
 (define (stack-push! stack value)
-  (send stack push! value))
+  (send stack push-front! value))
 
 (define (stack-pop! stack)
-  (send stack pop!))
+  (send stack pop-front!))
 
 (define (stack-clear! stack)
   (send stack clear!))
