@@ -57,8 +57,31 @@
   Return @racket[#t] if the input queue is empty.  Otherwise, return @racket[#f].
 }
 
-@section{Lock-free Stack}
-@defmodule[spork/mutable-collections/lock-free-stack]
 
-@section{Lock-free Queue}
-@defmodule[spork/mutable-collections/lock-free-queue]
+
+@section{Deque}
+@defmodule[spork/mutable-collections/deque]
+
+@defproc[(deque? [v any/c]) boolean?]{
+}
+
+@defproc[(make-deque) deque?]{
+}
+
+@defproc[(deque-push-back! [deque deque?] [v any/c]) void?]{
+}
+
+@defproc[(deque-push-front! [deque deque?] [v any/c]) void?]{
+}
+
+@defproc[(deque-pop-back! [deque deque?]) optional?]{
+}
+
+@defproc[(deque-pop-front! [deque deque?]) optional?]{
+}
+
+@defproc[(deque-clear! [deque deque?]) void?]{
+}
+
+@defproc[(deque-empty? [deque deque?]) boolean?]{
+}
