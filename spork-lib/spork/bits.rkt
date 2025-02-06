@@ -25,7 +25,12 @@
    (->i ([bits bits?]
          [spec (bits) (byte-in-range/c (bits-size bits))]
          [value (spec) (</c (expt 2 (byte-spec-size spec)))])
-        [result bits?])]))
+        [result bits?])]
+  [bits-get-slice (->i ([bits bits?] [spec (bits) (byte-in-range/c (bits-size bits))])
+                       [result bits?])]
+  [bits-set-slice (->i ([bits bits?] [position natural-number/c]
+                        [slice (bits position) (slice-in-range/c (bits-size bits) position)])
+                       [result bits?])]))
 
 (require srfi/54)
 
@@ -42,9 +47,27 @@
           (match-let ([(byte-spec size position) spec])
             (< (+ size position) bits-size))))))
 
+(define/contract (slice-in-range/c bits-size position)
+  (-> natural-number/c natural-number/c contract?)
+  (make-flat-contract
+   #:name (build-compound-type-name 'byte-in-range/c bits-size)
+   #:first-order
+   (λ (slice)
+     (and (bits? slice)
+          (match-let ([(bits size _) slice])
+            (< (+ size position) bits-size))))))
+
 (struct bits
   (size data)
+  #:methods gen:custom-write
+  ((define (write-proc this out mode)
+     (display (format-bits this) out)))
   #:transparent)
+
+(define (format-bits bs)
+  (format "#<bits ~a ~a>"
+    (bits-size bs)
+    (cat (bits-data bs) 'binary (bits-size bs) #\0)))
 
 (define (make-bits size [initial-data 0])
   (bits size initial-data))
@@ -68,14 +91,18 @@
 (struct byte-spec
   (size position))
 
-(define (ones n)
-  (sub1 (arithmetic-shift 1 n)))
-
 (define (bits-load-byte bs spec)
   (match-let ([(byte-spec size position) spec]
               [(bits _ data) bs])
     (bitwise-and (sub1 (arithmetic-shift 1 size))
                  (arithmetic-shift data (- position)))))
+
+(define (bits-store-byte bs spec value)
+  (let ([cleared-data (bits-clear-byte bs spec)])
+    (struct-copy bits bs
+        [data (bitwise-ior
+               cleared-data
+               (arithmetic-shift value (byte-spec-position spec)))])))
 
 (define (bits-clear-byte bs spec)
   (match-let ([(bits size data) bs]
@@ -85,9 +112,15 @@
        (arithmetic-shift (ones (- size byte-upper-bound)) byte-upper-bound)
        (ones byte-position)))))
 
-(define (bits-store-byte bs spec value)
-  (let ([cleared-data (bits-clear-byte bs spec)])
-    (struct-copy bits bs
-        [data (bitwise-ior
-               cleared-data
-               (arithmetic-shift value (byte-spec-position spec)))])))
+(define (bits-get-slice bs spec)
+  (bits (byte-spec-size spec)
+        (bits-load-byte bs spec)))
+
+(define (bits-set-slice bs position slice)
+  (bits-store-byte bs (byte-spec (bits-size slice) position) (bits-data slice)))
+
+(define (ones n)
+  (sub1 (bit n)))
+
+(define (bit n)
+  (arithmetic-shift 1 n))

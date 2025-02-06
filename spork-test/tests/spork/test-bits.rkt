@@ -66,4 +66,13 @@
       (check-exn exn:fail? (thunk (byte-spec -10 16))))
 
     (it "does NOT accept negative positions"
-      (check-exn exn:fail? (thunk (byte-spec 32 -16))))))
+      (check-exn exn:fail? (thunk (byte-spec 32 -16)))))
+
+  (describe "bits-get-slice and bits-set-slice"
+    (context "with some bits"
+      (define bits (make-bits 32 #xABAB00))
+      (check-equal? (bits-get-slice bits (byte-spec 16 8))
+                    (make-bits 16 #xABAB))
+      (check-equal? bits (bits-set-slice (make-bits 32) 8 (make-bits 16 #xABAB)))))
+
+  (make-bits 32 #xABAB00))
