@@ -21,19 +21,16 @@
     [(_ es:expr ...+)
      (with-syntax ([(value proc mex) (generate-temporaries '(value proc mex))])
        (syntax/loc stx
-         (let ([value undefined]
-               [proc (thunk es ...)]
-               [mex (make-mutex)])
+         (let ([value (box undefined)]
+               [proc (thunk es ...)])
            (memoized-thunk
             (thunk
-             (when (undefined? value)
-               (with-mutex mex
-                 (thunk
-                  (when (undefined? value)
-                    (set! value (proc))
-                    (set! proc undefined)
-                    (set! mex undefined)))))
-             value)))))]))
+             (let ([current-value (unbox value)])
+               (if (undefined? current-value)
+                   (let ([result ((compose list proc))])
+                     (box-cas! value current-value result)
+                     (apply values result))
+                 (apply values current-value))))))))]))
 
 (struct memoized-lambda
   (proc)
@@ -44,18 +41,17 @@
     [(_ (xs:id ...+) body:expr ...+)
      (with-syntax ([(table proc mex args) (generate-temporaries '(table proc mex args))])
        (syntax/loc stx
-         (let ([table (make-hash '())]
-               [proc (λ (xs ...) body ...)]
-               [mex (make-mutex)])
+         (let ([table (box (make-immutable-hash '()))]
+               [proc (λ (xs ...) body ...)])
            (memoized-lambda
             (λ (xs ...)
               (let ([args (list xs ...)])
-                (when (not (hash-has-key? table args))
-                  (with-mutex mex
-                    (thunk
-                     (when (not (hash-has-key? table args))
-                       (hash-set! table args (apply proc args))))))
-                (hash-ref table args)))))))]))
+                (let ([current-table (unbox table)])
+                  (if (not (hash-has-key? current-table args))
+                      (let ([result ((compose list proc) xs ...)])
+                        (box-cas! table current-table (hash-set current-table args result))
+                        (apply values result))
+                    (apply values (hash-ref (unbox table) args))))))))))]))
 
 (define-syntax (define-memoize stx)
   (syntax-parse stx
