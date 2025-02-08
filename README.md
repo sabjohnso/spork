@@ -11,3 +11,5 @@ This library implements a number of utilities which include:
  - monads
  - comonads
  - arrows
+ - persistent data structures
+ - mutable data structures (stack, queue, deque)

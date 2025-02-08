@@ -30,7 +30,11 @@
   [tape-insert (-> tape? any/c tape?)]
   [tape-join (-> tape? tape?)]
   [tape->list (-> tape? list?)]
-  [tape-reverse (-> tape? tape?)]))
+  [tape-reverse (-> tape? tape?)]
+  [tape-push-back (-> tape? any/c tape?)]
+  [tape-push-front  (-> tape? any/c tape?)]
+  [tape-pop-back (-> tape? (values any/c tape?))]
+  [tape-pop-front (-> tape? (values any/c tape?))]))
 
 (require spork/list-extras spork/functor)
 
@@ -159,6 +163,10 @@
   (match-let ([(tape xs ys) xs])
     (tape (cons x xs) ys)))
 
+(define (tape-delete xs)
+  (match-let ([(tape (list x xs ...) ys) xs])
+    (tape xs ys)))
+
 (define (tape-cut xs)
   (match-let ([(tape (list _ xs ...) ys) xs])
     (tape xs ys)))
@@ -166,7 +174,7 @@
 (define (tape-write xs x)
   (match xs
     [(tape (list _ xs ...) takeup) (tape (cons x xs) takeup)]
-    [(tape '() _) (error "Cannot write to the back of a tape")]))
+    [(tape '() _) (error "Cannot write to the back of a tape. Use `tape-insert` instead")]))
 
 (define/match (tape-read xs)
   [((tape (list x _ ...) _)) x]
@@ -177,3 +185,26 @@
 
 (define (tape-refrel xs n)
   (tape-read (tape-move-by xs n)))
+
+(define (tape-push-back xs x)
+  (tape-insert (tape-fast-fwd xs) x))
+
+(define (tape-push-front xs x)
+  (tape-insert (tape-rewind xs) x))
+
+(define (tape-pop-front xs)
+  (if (not (tape-empty? xs))
+    (let ([xs (tape-rewind xs)])
+      (values (tape-read xs)
+              (tape-delete xs)))
+    (error "Cannot return the item at the front of an empty tape")))
+
+(define (tape-move-to-last xs)
+  (if (not (tape-empty? xs))
+      (tape-bwd (tape-fast-fwd xs))
+    (error "Cannot move to the last element of an empty tape.")))
+
+(define (tape-pop-back xs)
+  (let ([xs (tape-move-to-last xs)])
+    (values (tape-read xs)
+            (tape-delete xs))))

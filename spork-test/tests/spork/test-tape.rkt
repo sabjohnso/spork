@@ -4,7 +4,6 @@
  spork/tape
  rackunit rackunit/spec)
 
-
 (describe "tape"
   (it "describes a data structure with a sequence of values and a position"
     (context "with a tape define with 4 elements"
@@ -84,16 +83,40 @@
               (check-equal? (tape-read (tape-fwd ys)) 'a))))
 
         (describe "tape-refabs"
-          (it "return the element of the tape at the absolute input position"
+          (it "returns the element of the tape at the absolute input position"
             (check-equal? (tape-refabs xs 1) 'b)
             (check-equal? (tape-refabs (tape-fwd xs) 1) 'b)))
 
         (describe "tape-refabs"
-          (it "return the element of the tape at the relative to the current position"
+          (it "returns the element of the tape at the relative to the current position"
             (check-equal? (tape-refrel xs 1) 'b)
             (check-equal? (tape-refrel (tape-fwd xs) 1) 'c)))
 
-        ))
+        (describe "tape-push-back"
+          (it "writes an item at the back of the tape"
+            (check-equal?
+             (tape-rewind (tape-push-back (list->tape '(a b c d)) 'e))
+             (list->tape '(a b c d e)))))
+
+        (describe "tape-push-front"
+          (it "wites an item at the front of the tape"
+            (check-equal?
+             (tape-push-front (list->tape '(2 3 4)) 1)
+             (list->tape '(1 2 3 4)))))
+
+        (describe "tape-pop-back"
+          (it "removes and returns a value from the back of a tape"
+            (let*-values ([(xs) (list->tape '(1 2 3))]
+                          [(value new-tape) (tape-pop-back xs)])
+              (check-equal? 3 value)
+              (check-equal? new-tape (tape-fast-fwd (list->tape '(1 2)))))))
+
+        (describe "tape-pop-front"
+          (it "removes and returns a value from the front of a tape"
+            (let*-values ([(xs) (list->tape '(1 2 3))]
+                          [(x xs) (tape-pop-front xs)])
+              (check-equal? 1 x)
+              (check-equal? (tape '(2 3) '()) xs)))))
 
   (it "can be constructed from a list"
     (check-equal?
@@ -103,4 +126,4 @@
   (it "can be constructed from a vector"
     (check-equal?
      (vector->tape #(a b c d))
-     (tape '(a b c d) '()))))
+     (tape '(a b c d) '())))))
