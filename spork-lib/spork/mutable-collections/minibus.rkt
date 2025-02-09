@@ -60,6 +60,7 @@
     (define routes (box (make-immutable-hash '())))
     (define message-queue (make-queue))
     (define bus-status (box (status #f #f)))
+    (define cust (make-custodian))
 
     (define/public (add-route new-route)
       (match-let ([(route emitter receiver) new-route])
@@ -104,9 +105,9 @@
 
     (define (check-continue)
       (let loop ([current-status (unbox bus-status)])
-        (status-stopping current-status)
-        (when (not (box-cas! bus-status current-status (status #f #f)))
-          (loop (unbox bus-status)))))
+        (if (status-stopping current-status)
+            (begin (box-cas! bus-status current-status (status #f #f)) #f)
+          #t)))
 
     (define/public (stop)
       (let loop ([current-status (unbox bus-status)])
@@ -124,6 +125,32 @@
 
     (define/public (queueing?)
       (not (queue-empty? message-queue)))))
+
+#;
+(define concurrent-minibus-bus%
+  (class minibus%
+    (super-new)
+    (define/override (run)
+      (let ([current-bus-status (unbox bus-status)])
+        (when (and (not (status-running current-bus-status))
+                   (box-cas! bus-status current-bus-status
+                             (status #t #f)))
+          (thread
+           (thunk
+            (let loop ([item (queue-pop-front! message-queue)])
+              (match item
+                [(some (cons emitter (message tag data)))
+                 (let* ([current-routes (unbox routes)]
+                        [receivers (hash-ref current-routes emitter '())])
+                   (parameterize ([current-custodian cust])
+                     (for ([receiver receivers])
+                       (thread
+                        (thunk
+                         (send receiver on-message tag data))))))]
+                [(none) (void)])
+              (when (check-continue)
+                (loop (queue-pop-front! message-queue))))))))
+      (void))))
 
 (define (make-minibus)
   (new minibus%))

@@ -46,16 +46,20 @@
         (minibus-handle-message! minibus 'some-emitter (message 'my-tag 'message-data0))
         (minibus-handle-message! minibus 'some-emitter (message 'my-tag 'message-data1))
         (check-true (minibus-queueing? minibus))
+
         (let loop ()
           (when (minibus-queueing? minibus)
             (loop)))
         (minibus-stop! minibus)
+
         (let loop ()
           (when (minibus-stopping? minibus)
             (loop)))
-        (check-equal? (send receiver get-next-call)
-                      (some '(on-message my-tag message-data0)))
-        (check-equal? (send receiver get-next-call)
-                      (some '(on-message my-tag message-data1)))
-        (check-equal? (send receiver get-next-call)
-                      (none))))))
+
+        (let ([calls
+               (let loop ([accum '()])
+                 (match (send receiver get-next-call)
+                   [(some call) (loop (cons call accum))]
+                   [(none) (reverse accum)]))])
+          (check-equal? (list-ref calls 0) '(on-message my-tag message-data0))
+          (check-equal? (list-ref calls 1) '(on-message my-tag message-data1)))))))
