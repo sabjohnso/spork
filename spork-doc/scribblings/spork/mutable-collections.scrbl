@@ -45,7 +45,7 @@
 }
 
 @defproc[(make-queue) queue?]{
-  Return and empty @racket[queue?].
+  Return an empty @racket[queue?].
 }
 
 @defproc[(queue-push-back! [queue queue?] [v any/c]) void?]{
@@ -155,7 +155,22 @@
 }
 
 @defproc[(make-minibus) minibus?]{
-  Return a new minibus.
+  Return a new minibus.  The minibus retured by @racket[make-minibus] guarantees the delivery
+  of messages in the same order it received them.  However, slow receivers will negatively impact
+  the delivery time for all receivers, and a deadlocked receiver will deadlock the entire bus.
+}
+
+@defproc[(make-unordered-minibus) minibus?]{
+  Return an empty @racket[minibus?].  The minibus returned from @racket[make-unordered-minibus]
+  delivers each message in a separate thread, making rhobust against slow or deadocked
+  receivers.  However, doing so prevents the bus from being able to make guarantees
+  about the order in which the messages are delivered.
+
+  As a default, applications should use @racket[make-unordered-minibus]. Applications that
+  are sensitive to the order of message delivery should use @racket[make-minibus]. Applications
+  that are sensative to the order of message delivery and have an expectation of slow receivers
+  that could impact the application should wrap their receivers in an object to handle
+  separate reception and processing of messages.
 }
 
 @defproc[(minibus-add-route! [minibus minibus?] [route route?]) void?]{

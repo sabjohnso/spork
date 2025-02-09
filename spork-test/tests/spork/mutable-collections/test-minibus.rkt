@@ -62,4 +62,35 @@
                    [(some call) (loop (cons call accum))]
                    [(none) (reverse accum)]))])
           (check-equal? (list-ref calls 0) '(on-message my-tag message-data0))
-          (check-equal? (list-ref calls 1) '(on-message my-tag message-data1)))))))
+          (check-equal? (list-ref calls 1) '(on-message my-tag message-data1))))))
+
+  (describe "unordered minibuses"
+    (define minibus (make-unordered-minibus))
+    (define receiver (new mock-receiver%))
+    (minibus-add-route! minibus (route 'some-emitter receiver))
+    (minibus-run! minibus)
+    (describe "minibus-handle-message for unordered minbuses"
+      (it "uses the minibus to handle a message"
+        (check-true (minibus-running? minibus))
+        (check-false (minibus-queueing? minibus))
+        (minibus-handle-message! minibus 'some-emitter (message 'my-tag 'message-data0))
+        (minibus-handle-message! minibus 'some-emitter (message 'my-tag 'message-data1))
+        (check-true (minibus-queueing? minibus))
+
+        (let loop ()
+          (when (minibus-queueing? minibus)
+            (loop)))
+        (minibus-stop! minibus)
+
+        (let loop ()
+          (when (minibus-stopping? minibus)
+            (loop)))
+
+        (let ([calls
+               (list->set
+                (let loop ([accum '()])
+                  (match (send receiver get-next-call)
+                    [(some call) (loop (cons call accum))]
+                    [(none) (reverse accum)])))])
+          (check-true (set-member? calls '(on-message my-tag message-data0)))
+          (check-true (set-member? calls '(on-message my-tag message-data1))))))))
