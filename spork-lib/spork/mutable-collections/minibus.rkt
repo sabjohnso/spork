@@ -19,12 +19,15 @@
   [minibus-stopping? (-> minibus? boolean?)]
   [minibus-queueing? (-> minibus? boolean?)]))
 
-(require spork/optional spork/delegation spork/mutable-collections/queue)
+(require
+ spork/optional spork/delegation spork/mutable-collections/runner
+ spork/mutable-collections/queue)
 
 (module phase-invariants racket
-  (provide (all-defined-out)
-           (all-from-out racket))
-
+  (provide
+   (all-defined-out)
+   (all-from-out racket))
+  (require spork/mutable-collections/runner)
   (define receiver<%>
     (interface ()
       [on-message (->m any/c any/c void?)]))
@@ -38,14 +41,10 @@
     #:transparent)
 
   (define minibus<%>
-    (interface ()
+    (interface (runnable<%>)
       [add-route (->m route? void?)]
       [remove-route (->m route? void?)]
       [handle-message (->m any/c message? void?)]
-      [run (->m void?)]
-      [stop (->m void?)]
-      [running? (->m boolean?)]
-      [stopping? (->m boolean?)]
       [queueing? (->m boolean?)])))
 
 (require
@@ -61,6 +60,19 @@
 (struct status
   (running stopping))
 
+(define receiving-queue%
+  (class abstract-runnable%
+    (super-new)
+
+    (init-field receiver)
+    (define queue (make-queue))
+
+    (define/override (get-thunk)
+      (thunk
+       (when (not (queue-empty? queue))
+         (match-let ([(message tag data) (queue-pop-front! queue)])
+           (send receiver on-message tag data)))))))
+
 (define minibus%
   (class* object%
       (minibus<%>)
@@ -74,15 +86,13 @@
     ;; minibus is constructed with `make-minibus`
     (define/public (get-routes) routes)
 
-    ;; This method is hidden by delegation when the the
+    ;; This method is hidden by delegation when the thep
     ;; minibus is constructed with `make-minibus`
     (define/public (get-message-queue) message-queue)
 
     ;; This method is hidden by delegation when the the
     ;; minibus is constructed with `make-minibus`
     (define/public (get-status) bus-status)
-
-
 
     (define/public (add-route new-route)
       (match-let ([(route emitter receiver) new-route])
@@ -105,6 +115,17 @@
 
     (define/public (handle-message emitter message)
       (queue-push-back! message-queue (cons emitter message)))
+
+    (define/public (get-thunk)
+      (match (queue-pop-front! message-queue)
+        [(some (cons emitter (message tag data))) (deliver-message emitter tag data)]
+        [(none) (void)]))
+
+    (define (deliver-message emitter tag data)
+      (when (hash-has-key? (unbox routes) emitter)
+        (let ([receivers (hash-ref (unbox routes) emitter '())])
+          (for ([receiver receivers])
+            (send receiver on-message tag data)))))
 
     (define/public (run)
       (let ([current-bus-status (unbox bus-status)])
