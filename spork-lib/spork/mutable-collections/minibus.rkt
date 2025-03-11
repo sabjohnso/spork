@@ -60,143 +60,138 @@
 (struct status
   (running stopping))
 
-(define receiving-queue%
+;; The receiver-queue% class is implemented to maintain the order
+;; of messages sent to a receiver while simultaneously guarding
+;; against slow or even deadlocked receivers.
+;;
+;; Rather than directly delivering messages to a receiver, the
+;; bus delivers messages to a queue that is specific the the
+;; receiver.  The bus then runs the receiver queue, which will
+;; execute in a separate thread until the queue is empty.
+;;
+;; Note that this mechanism does not guarantee the order of
+;; dilivery of messages to distinct  receivers, just to an
+;; individual receiver.
+(define receiver-queue%
   (class abstract-runnable%
     (super-new)
-
+    (inherit stop)
     (init-field receiver)
     (define queue (make-queue))
 
+    (define/public (on-message tag data)
+      (queue-push-back! queue (message tag data)))
+
     (define/override (get-thunk)
       (thunk
-       (when (not (queue-empty? queue))
-         (match-let ([(message tag data) (queue-pop-front! queue)])
-           (send receiver on-message tag data)))))))
+       (match (queue-pop-front! queue)
+        [(some (message tag data)) (send receiver on-message tag data)]
+        [(none) (stop)])))))
 
-(define minibus%
-  (class* object%
-      (minibus<%>)
+(struct routing-data
+  (emitter-receivers
+   receiver-emitters
+   receiver-queues))
+
+(define (make-routing-data)
+  (routing-data
+   (make-immutable-hash '())
+   (make-immutable-hash '())
+   (make-immutable-hash '())))
+
+
+;; The routing-data% class is a non-user-facing
+;; class that manages routing data for a bus.
+;; All operations are thread and future safe.
+(define routing-data%
+  (class object%
     (super-new)
-
-    (define routes (box (make-immutable-hash '())))
-    (define message-queue (make-queue))
-    (define bus-status (box (status #f #f)))
-
-    ;; This method is hidden by delegation when the the
-    ;; minibus is constructed with `make-minibus`
-    (define/public (get-routes) routes)
-
-    ;; This method is hidden by delegation when the thep
-    ;; minibus is constructed with `make-minibus`
-    (define/public (get-message-queue) message-queue)
-
-    ;; This method is hidden by delegation when the the
-    ;; minibus is constructed with `make-minibus`
-    (define/public (get-status) bus-status)
+    (define data (box (make-routing-data)))
 
     (define/public (add-route new-route)
       (match-let ([(route emitter receiver) new-route])
-        (let loop ([current-routes (unbox routes)])
-          (let ([receivers (hash-ref current-routes emitter '())])
-            (when (and (not (member receiver receivers))
-                       (not (box-cas! routes current-routes
-                                      (hash-set current-routes emitter
-                                                (append receivers (list receiver))))))
-              (loop (unbox routes)))))))
+        (let loop ([current-data (unbox data)])
+          (unless
+              (box-cas! data current-data
+                        (routing-data
+                         (add-to-table (routing-data-emitter-receivers current-data) emitter receiver)
+                         (add-to-table (routing-data-receiver-emitters current-data) receiver emitter)
+                         (add-receiver-queue (routing-data-receiver-queues current-data) receiver)))
+            (loop)))))
+
+    (define (add-to-table table key val)
+      (let ([vals (hash-ref table key '())])
+        (if (member val vals) table
+          (hash-set table key (append vals (list val))))))
+
+    (define (add-receiver-queue receiver-queues receiver)
+      (if (hash-has-key? receiver-queues receiver) receiver-queues
+        (hash-set receiver-queues receiver (new receiver-queue% [receiver receiver]))))
 
     (define/public (remove-route old-route)
       (match-let ([(route emitter receiver) old-route])
-        (let loop ([current-routes (unbox routes)])
-          (let ([receivers (hash-ref current-routes emitter '())])
-            (when (and (member receiver receivers)
-                       (not (box-cas! routes current-routes
-                                      (hash-set current-routes emitter (remove receiver receivers)))))
-              (loop (unbox routes)))))))
+        (let loop ([current-data (unbox data)])
+          (let* ([new-emitter-receivers (remove-from-table (routing-data-emitter-receivers current-data) emitter receiver)]
+                 [new-receiver-emitters (remove-from-table (routing-data-receiver-emitters current-data) receiver emitter)]
+                 [new-receiver-queues (if (hash-has-key? new-receiver-emitters receiver) (routing-data-receiver-queues current-data)
+                                        (remove-receiver-queue (routing-data-receiver-queues current-data) receiver))])
+            (unless
+                (box-cas! data current-data
+                          (routing-data
+                           new-emitter-receivers
+                           new-receiver-emitters
+                           new-receiver-queues))
+              (loop))))))
+
+    (define (remove-from-table table key val)
+      (let ([vals (remove val (hash-ref table key '()))])
+        (if (null? vals) (hash-remove table key)
+          (hash-set table key vals))))
+
+    (define (remove-receiver-queue receiver-queues receiver)
+      (hash-remove receiver-queues receiver))
+
+    (define/public (get-receivers emitter)
+      (hash-ref (routing-data-emitter-receivers (unbox data)) emitter '()))
+
+    (define/public (get-receiver-queue receiver)
+      (hash-ref (routing-data-receiver-queues (unbox data)) receiver #f))))
+
+;; The minibus% class a minibus that is robust
+;; against failures caused by slow or deadlocked receivers
+(define minibus%
+  (class* abstract-runnable%
+      (minibus<%>)
+    (super-new)
+
+    (define message-queue (make-queue))
+    (define routing-data (new routing-data%))
+
+    (define/public (add-route new-route)
+      (send routing-data add-route new-route))
+
+    (define/public (remove-route old-route)
+      (send routing-data remove-route old-route))
+
+    (define/override (get-thunk)
+      (thunk
+       (match (queue-pop-front! message-queue)
+         [(some (cons emitter (message tag data))) (deliver-message emitter tag data)]
+         [(none) (void)])))
+
+    (define (deliver-message emitter tag data)
+      (let ([receivers (send routing-data get-receivers emitter
+                             )])
+        (for ([receiver receivers])
+          (let ([receiver-queue (send routing-data get-receiver-queue receiver)])
+            (send receiver-queue on-message tag data)
+            (send receiver-queue run)))))
 
     (define/public (handle-message emitter message)
       (queue-push-back! message-queue (cons emitter message)))
 
-    (define/public (get-thunk)
-      (match (queue-pop-front! message-queue)
-        [(some (cons emitter (message tag data))) (deliver-message emitter tag data)]
-        [(none) (void)]))
-
-    (define (deliver-message emitter tag data)
-      (when (hash-has-key? (unbox routes) emitter)
-        (let ([receivers (hash-ref (unbox routes) emitter '())])
-          (for ([receiver receivers])
-            (send receiver on-message tag data)))))
-
-    (define/public (run)
-      (let ([current-bus-status (unbox bus-status)])
-        (when (and (not (status-running current-bus-status))
-                   (box-cas! bus-status current-bus-status
-                             (status #t #f)))
-          (thread
-           (thunk
-            (let loop ([item (queue-pop-front! message-queue)])
-              (match item
-                [(some (cons emitter (message tag data)))
-                 (let* ([current-routes (unbox routes)]
-                        [receivers (hash-ref current-routes emitter '())])
-                   (for ([receiver receivers])
-                     (send receiver on-message tag data)))]
-                [(none) (void)])
-              (when (check-continue)
-                (loop (queue-pop-front! message-queue))))))))
-      (void))
-
-    ;; This method is hidden by delegation when the the
-    ;; minibus is constructed with `make-minibus`
-    (define/public (check-continue)
-      (let loop ([current-status (unbox bus-status)])
-        (if (status-stopping current-status)
-            (begin (box-cas! bus-status current-status (status #f #f)) #f)
-          #t)))
-
-    (define/public (stop)
-      (let loop ([current-status (unbox bus-status)])
-        (when (and (status-running current-status)
-                   (not (box-cas! bus-status current-status
-                                  (struct-copy status current-status
-                                    [stopping #t]))))
-          (loop (unbox bus-status)))))
-
-    (define/public (running?)
-      (status-running (unbox bus-status)))
-
-    (define/public (stopping?)
-      (status-stopping (unbox bus-status)))
-
     (define/public (queueing?)
       (not (queue-empty? message-queue)))))
-
-(define unordered-minibus%
-  (class minibus%
-    (super-new)
-    (inherit get-status get-routes check-continue get-message-queue)
-    (define cust (make-custodian))
-    (define/override (run)
-      (let ([current-bus-status (unbox (get-status))])
-        (when (and (not (status-running current-bus-status))
-                   (box-cas! (get-status) current-bus-status
-                             (status #t #f)))
-          (thread
-           (thunk
-            (let loop ([item (queue-pop-front! (get-message-queue))])
-              (match item
-                [(some (cons emitter (message tag data)))
-                 (let* ([current-routes (unbox (get-routes))]
-                        [receivers (hash-ref current-routes emitter '())])
-                   (parameterize ([current-custodian cust])
-                     (for ([receiver receivers])
-                       (thread
-                        (thunk
-                         (send receiver on-message tag data))))))]
-                [(none) (void)])
-              (when (check-continue)
-                (loop (queue-pop-front! (get-message-queue)))))))))
-      (void))))
 
 (define (make-minibus)
   (define minibus (new minibus%))
@@ -206,9 +201,10 @@
   (delegator ([minibus (minibus<%>)])))
 
 (define (make-unordered-minibus)
-  (define minibus (new unordered-minibus%))
+  (define minibus (new minibus%))
   ;; The minibus is wrapped in a delegator to protect
-  ;; the get-status method
+  ;; methods related to the objet's internal state
+  ;; that would otherwise be exposed
   (delegator ([minibus (minibus<%>)])))
 
 (define (minibus-add-route! minibus route)

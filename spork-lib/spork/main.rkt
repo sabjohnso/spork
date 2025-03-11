@@ -4,33 +4,37 @@
  (all-from-out
   spork/arrow
   spork/category
+  spork/cokleisli
   spork/curried
+  spork/either
+  spork/env
+  spork/expect
   spork/functor
   spork/infix-notation
-  spork/tag
-  spork/union
-  spork/optional
-  spork/expect
-  spork/stateful
-  spork/env
   spork/kleisli
-  spork/cokleisli
-  spork/either
-  spork/tape))
+  spork/misc
+  spork/optional
+  spork/stateful
+  spork/stream-extras
+  spork/tag
+  spork/tape
+  spork/union))
 
 (require
  spork/arrow
- spork/category
- spork/curried
- spork/functor
- spork/infix-notation
- spork/tag
- spork/union
- spork/optional
- spork/expect
- spork/stateful
- spork/env
- spork/kleisli
- spork/cokleisli
- spork/either
- spork/tape)
+  spork/category
+  spork/cokleisli
+  spork/curried
+  spork/either
+  spork/env
+  spork/expect
+  spork/functor
+  spork/infix-notation
+  spork/kleisli
+  spork/misc
+  spork/optional
+  spork/stateful
+  spork/stream-extras
+  spork/tag
+  spork/tape
+  spork/union)

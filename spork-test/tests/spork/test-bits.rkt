@@ -73,6 +73,4 @@
       (define bits (make-bits 32 #xABAB00))
       (check-equal? (bits-get-slice bits (byte-spec 16 8))
                     (make-bits 16 #xABAB))
-      (check-equal? bits (bits-set-slice (make-bits 32) 8 (make-bits 16 #xABAB)))))
-
-  (make-bits 32 #xABAB00))
+      (check-equal? bits (bits-set-slice (make-bits 32) 8 (make-bits 16 #xABAB))))))

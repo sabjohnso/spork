@@ -2,6 +2,7 @@
 
 (provide
  stream-iterate
+ stream-window
  stream-return
  stream-fmap
  stream-fapply
@@ -12,6 +13,7 @@
  nonempty-stream-extend
  (contract-out
   [stream-iterate-function (-> (-> any/c any/c)  any/c stream?)]
+  [stream-window-function (-> stream? natural-number/c stream?)]
   [stream-return-function (-> any/c stream?)]
   [stream-fmap-function (-> (-> any/c any/c) stream? stream?)]
   [stream-fapply-function (-> (stream/c (-> any/c any/c)) stream? stream?)]
@@ -129,7 +131,7 @@
 
 (define-syntax (nonempty-stream-extend stx)
   (syntax-parse stx
-    [_:id #'nonempty-strream-extend-function]
+    [_:id #'nonempty-stream-extend-function]
     [(_ f xs)
      (syntax/loc stx
        (stream-lazy
@@ -145,3 +147,16 @@
      (syntax/loc stx
        (stream-lazy
         (stream-iterate-function f x)))]))
+
+(define (stream-window-function xs n)
+  (stream-cons
+   (stream-take xs n)
+   (stream-window-function (stream-tail xs n) n)))
+
+(define-syntax (stream-window stx)
+  (syntax-parse stx
+    [_:id #'stream-window-function]
+    [(_ xs:expr n:expr)
+     (syntax/loc stx
+       (stream-lazy
+        (stream-window-function xs n)))]))

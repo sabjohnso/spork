@@ -1,7 +1,5 @@
 #lang racket
 
-
-
 (module+ test
   (require
    rackunit rackunit/spec
