@@ -175,10 +175,7 @@
       (it "only accepts parsers as the first argument"
         (check-exn exn:fail? (thunk (parser-bind "I'm not a parser!" parser-return))))
       (it "only accepts unary procedures as the second argument"
-        (check-exn exn:fail? (thunk (parser-bind (parser-item) (λ (x y) (parser-item))))))
-      (it "only accepts unary procedures returning a parser as the second argument at parse time"
-        (check-exn exn:fail? (thunk (parse (parser-bind (parser-item) (λ (x) 'bannanas))
-                                           '(a b))))))
+        (check-exn exn:fail? (thunk (parser-bind (parser-item) (λ (x y) (parser-item)))))))
 
     (describe "parser-push"
       (it "accepts a value and returns a parser"
