@@ -181,4 +181,38 @@
         (check-true (byte-range-adjacent? (r "A-C") (r "D-F"))))
 
       (it "does not include pairs of ranges that are discontiguous"
-        (check-false (byte-range-adjacent? (r "A-C") (r "E-G")))))))
+        (check-false (byte-range-adjacent? (r "A-C") (r "E-G")))))
+
+
+    (describe "byte-range-simplify-list"
+      (context "with a list of input byte ranges and output from byte-range-simplify-list"
+        (define input-ranges (list (r "0-9") (r "A-Z") (r "a-z")))
+        (define output-ranges (byte-range-simplify-list input-ranges))
+
+
+        (it "produces a list"
+          (check-true (list? output-ranges)))
+
+        (it "produces a list of byte ranges"
+          (check-true
+           (for/fold ([result #t])
+               ([range output-ranges])
+             (byte-range? range))))
+
+        (it "produces a list in ascending order"
+          (check-equal? output-ranges (sort output-ranges byte-range<?)))
+
+        (it "produces a list of discontiguous byte ranges"
+          (check-true (for/fold ([result #t] [previous (car output-ranges)] #:result result)
+                          ([current (cdr output-ranges)] #:break (not result))
+                        (values
+                         (not (byte-range-contiguous? previous current))
+                         current)))))
+
+      (it "aggregates intersecting ranges"
+        (check-equal? (byte-range-simplify-list (list (r "B-D") (r "A-C")))
+                      (list (r "A-D"))))
+
+      (it "aggregates adjacent ranges"
+        (check-equal? (byte-range-simplify-list (list (r "C-E") (r "F-H")))
+                      (list (r "C-H")))))))

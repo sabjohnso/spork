@@ -1,6 +1,10 @@
 #lang racket
 
 (provide
+ unsafe-byte-range-intersect?
+ unsafe-byte-range-adjacent?
+ unsafe-byte-range-contiguous?
+ unsafe-byte-range-simplify
  (contract-out
   (struct byte-range ([lower byte?] [upper byte?]))
   [byte-range-contains (-> byte-range? byte? boolean?)]
@@ -13,9 +17,9 @@
   [byte-range-intersect? binary-relation/c]
   [byte-range-adjacent? binary-relation/c]
   [byte-range-contiguous? binary-relation/c]
-  [unsafe-byte-range-intersect? binary-relation/c]
-  [unsafe-byte-range-adjacent? binary-relation/c]
-  [unsafe-byte-range-contiguous? binary-relation/c]))
+
+  [byte-range-simplify (-> byte-range? byte-range? byte-range-simple-ascending-list?)]
+  [byte-range-simplify-list (-> (listof byte-range?) byte-range-simple-ascending-list?)]))
 
 (require)
 
@@ -111,5 +115,40 @@
   (if (byte-range<? range1 range2)
       (unsafe-byte-range-contiguous? range1 range2)
     (unsafe-byte-range-contiguous? range2 range1)))
+
+(define (unsafe-byte-range-simplify range1 range2)
+  (if (unsafe-byte-range-contiguous? range1 range2)
+      (list (byte-range (byte-range-lower range1)
+                        (max (byte-range-upper range1)
+                             (byte-range-upper range2))))
+    (list range1 range2)))
+
+
+(define (byte-range-simplify range1 range2)
+  (if (byte-range<? range1 range2)
+      (unsafe-byte-range-simplify range1 range1)
+    (unsafe-byte-range-simplify range2 range1)))
+
+(define (byte-range-simplify-list ranges)
+  (let ([ranges (sort ranges byte-range<?)])
+    (define (recur prev remaining accum)
+      (if (null? remaining) (reverse (cons prev accum))
+        (match (unsafe-byte-range-simplify prev (car remaining))
+          [(list prev next) (recur next (cdr remaining) (cons prev accum))]
+          [(list next) (recur next (cdr remaining) accum)])))
+    (if (null? ranges) '()
+      (recur (car ranges) (cdr ranges) '()))))
+
+
+(define (byte-range-simple-ascending-list? ranges)
+  (and (list? ranges)
+       (or (null? ranges)
+           (and (byte-range? (car ranges))
+                (for/fold ([result #t] [prev (car ranges)] #:result result)
+                    ([current (cdr ranges)] #:break (not result))
+                  (values (and (byte-range? current)
+                               (byte-range<? prev current)
+                               (not (byte-range-contiguous? prev current)))
+                          current))))))
 
 (define binary-relation/c (-> byte-range? byte-range? boolean?))
