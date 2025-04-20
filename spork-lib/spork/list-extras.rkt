@@ -10,7 +10,9 @@
   [list-join (-> (listof list?) list?)]
   [nonempty-list? predicate/c]
   [nonempty-list-duplicate (-> nonempty-list? (listof nonempty-list?))]
-  [nonempty-list-extend (-> (-> nonempty-list? any/c) nonempty-list? nonempty-list?)]))
+  [nonempty-list-extend (-> (-> nonempty-list? any/c) nonempty-list? nonempty-list?)]
+  [butlast (-> list? list?)]
+  [unsafe-unique? (-> list? (-> any/c any/c boolean?) boolean?)]))
 
 (define (rappend xs ys)
   (if (null? xs) ys
@@ -52,3 +54,17 @@
     (if (null? xs) (reverse accum)
       (recur (cdr xs) (cons (f xs) accum))))
   (recur xs '()))
+
+(define (butlast xs)
+  (reverse (cdr (reverse xs))))
+
+;; (: unsafe-list-extras? (-> list? irreflexive-binary-relation? boolean?))
+;; unsafe-unique? is unsafe in the sense that it requires a  irreflexive binary
+;; relation for compare? which is not validated.
+(define (unsafe-unique? xs compare?)
+  (if (null? xs) #t
+    (let ([xs (sort xs compare?)])
+      (for/fold ([prev (car xs)] [result #t] #:result result)
+          ([x (cdr xs)]
+           #:break (not result))
+        (values x (compare? prev x))))))
