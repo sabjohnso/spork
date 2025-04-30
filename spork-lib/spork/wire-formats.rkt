@@ -81,13 +81,21 @@
      [type fixed-record?]))
 
   [component-field-names (-> (listof fixed-record-component?) (listof symbol?))]
-
   [fixed-record-component? predicate/c]
   [fixed-record-supers (-> fixed-record (listof fixed-record-super?))]
   [fixed-record-super-count (-> fixed-record? natural-number/c)]
   [fixed-record-fields (-> fixed-record (listof fixed-record-field?))]
   [fixed-record-field-names (-> fixed-record (listof symbol?))]
   [fixed-record-field-count (-> fixed-record? natural-number/c)]
+
+  (struct enum-type
+    [(value-type fixed-size-type?)
+     (named-values  unique-name-integer-pairs?)])
+
+  (struct discriminated-union
+    ([discriminant enum-type?]
+     [variants (listof (cons/c symbol? wire-format?))]))
+
   [endian? predicate/c]
   [fixed-size-type? predicate/c]
   [fixed-size-in-bits (-> fixed-size-type? natural-number/c)]
@@ -107,6 +115,25 @@
 (struct fixed-integer
   (size unit signed? endianness bit-endianness)
   #:transparent)
+
+(define (fixed-integer-min-value type)
+  (match type
+    [(fixed-integer _ _ #f _ _) 0]
+    [(fixed-integer size unit #t _ _)
+     (- (expt 2 (sub1 (* size unit))))]))
+
+(define (fixed-integer-max-value type)
+  (match-let ([(fixed-integer size unit signed? _ _) type])
+    (if signed? (expt 2 (sub1 (* size unit)))
+      (expt 2 (* size unit)))))
+
+(define (fixed-integer-predicate type)
+  (let ([min (fixed-integer-min-value type)]
+        [max (fixed-integer-max-value type)])
+    (λ (x)
+      (and (exact-integer? x)
+           (>= x min)
+           (<= x max)))))
 
 (define (fixed-signed
          size
@@ -322,9 +349,65 @@
 (define (unique-names? names)
   (unsafe-unique? names symbol<?))
 
+(define (unique-numbers? numbers)
+  (unsafe-unique? numbers <))
+
+
+(define (unique-name-integer-pairs? x)
+  (and (list? x)
+       (for/and ([item x])
+         (and (pair? item)
+              (symbol? (car item))
+              (exact-integer? (cdr item))))
+       (unique-names? (map car x))
+       (unique-numbers? (map cdr x))))
+
+
+(define (enum-type-guard type named-values name)
+  (let ([pred? (fixed-integer-predicate type)])
+    (if (for/and ([value (map cdr named-values)])
+          (pred? value))
+        (values type named-values)
+      (error
+       (format enum-type-value-error
+         name
+         type
+         (filter (λ (named-value) (pred? (cdr named-value))) named-values)
+         (filter (λ (named-value) (not (pred? (cdr named-value)))) named-values))))))
+
+(define enum-type-value-error
+  "When constructing the an enum type, not all of the enum values are members of the value type.
+\t    value type: ~a
+\t  valid values: ~a
+\tinvalid values: ~a")
+
+(struct enum-type
+  (value-type named-values)
+  #:guard enum-type-guard)
+
+(define (enum-type-names type)
+  (map car (enum-type-named-values type)))
+
+(define (enum-type-values type)
+  (map cdr (enum-type-named-values type)))
+
+(define (enum-type-value-predicate type)
+  (let ([values (apply set (enum-type-values type))])
+    (λ (x) (set-member? values x))))
+
+(define (enum-type-name-predicate type)
+  (let ([names (apply set (enum-type-names type))])
+    (λ (x) (set-member? names x))))
+
 (define (fixed-size-type? arg)
   (match arg
-    [(or (? fixed-integer?) (? fixed-array?) (? fixed-tuple?) (? fixed-record?) (? fixed-string?)) #t]
+    [(or (? fixed-integer?)
+         (? fixed-array?)
+         (? fixed-tuple?)
+         (? fixed-record?)
+         (? fixed-string?)
+         (? enum-type?))
+     #t]
     [_ #f]))
 
 (define (fixed-size-in-bits arg)
@@ -343,4 +426,46 @@
           (fixed-size-in-bits type)]
          [(fixed-record-field _ type)
           (fixed-size-in-bits type)]))]
-    [(fixed-string length _ _) (* length 8)]))
+    [(fixed-string length _ _) (* length 8)]
+    [(enum-type value-type _) (fixed-size-in-bits value-type)]))
+
+
+(define (discriminated-union-guard discriminant variants name)
+  (let ([discriminant-names (enum-type-names discriminant)]
+        [variant-names (map car variants)])
+    (cond [(> (length discriminant-names) (length variant-names))
+           (error (format discriminated-union-missing-variants-error
+                    discriminant
+                    variant-names
+                    (set-subtract (list->set discriminant-names) (list->set variant-names))))]
+          [(< (length discriminant-names) (length variant-names))
+           (error (format discriminated-union-extra-variants-error
+                    discriminant
+                    (set-subtract (list->set variant-names) (list->set discriminant-names))))]
+          [else (values discriminant variants)])))
+
+(define discriminated-union-missing-variants-error
+  "Some variants are missing for a discriminated union:
+\t     discriminant: ~a
+\t    variant names: ~a
+\t missing variants: ~a")
+
+(define discriminated-union-extra-variants-error
+  "Some variants are missing for a discriminated union:
+\t     discriminant: ~a
+\t   extra variants: ~a")
+
+
+(struct discriminated-union
+  (discriminant variants))
+
+
+(define (dynamically-sized-type? x)
+  (match x
+    [(? discriminated-union?) #t]
+    [_ #f]))
+
+
+(define (wire-format? x)
+  (or (fixed-size-type? x)
+      (dynamically-sized-type? x)))

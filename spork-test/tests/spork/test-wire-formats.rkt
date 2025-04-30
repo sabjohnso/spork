@@ -238,6 +238,34 @@
                              (fixed-integer 8 1 #t 'little 'little))))
         (check-true (fixed-size-type? tuple)))))
 
+  (describe "enum-type"
+    (define value-type uint8-little)
+    (define values '((a . 1) (b . 2) (c . 3)))
+    (define abc (enum-type value-type values))
+
+    (it "constructs an enum type"
+      (check-true (enum-type? abc)))
+
+    (it "constructs a fixed-size-type?"
+      (check-true (fixed-size-type? abc)))
+
+    (it "has a size that is the same as its value type"
+      (check-equal? (fixed-size-in-bits abc)
+                    (fixed-size-in-bits value-type))))
+
+  (describe "discriminated-union?"
+    (define value-type uint8-little)
+    (define values '((a . 1) (b . 2) (c . 3)))
+    (define abc (enum-type value-type values))
+    (define type-a (fixed-record (list (fixed-record-field 'field1 uint8-little))))
+    (define type-b (fixed-record (list (fixed-record-field 'field1 uint16-little))))
+    (define type-c (fixed-record (list (fixed-record-field 'field1 uint32-little))))
+    (define some-type (discriminated-union abc
+                        `((a . ,type-a)
+                          (b . ,type-b)
+                          (c . ,type-c))))
+    (it "constructs a discriminated-union"
+      (check-true (discriminated-union? some-type))))
 
 
   (describe "fixed-size-in-bits"
