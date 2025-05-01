@@ -103,18 +103,25 @@
   [unique-field-names? predicate/c]
   [unique-super-names? predicate/c]))
 
-(require spork/list-extras)
+(require spork/list-extras spork/bits)
+
 
 (define endian
   (set 'little 'big))
+
 
 (define (endian? arg)
   (set-member? endian arg))
 
 
+;;
+;; ... Fixed Size Integers
+;;
+
 (struct fixed-integer
   (size unit signed? endianness bit-endianness)
   #:transparent)
+
 
 (define (fixed-integer-min-value type)
   (match type
@@ -122,10 +129,12 @@
     [(fixed-integer size unit #t _ _)
      (- (expt 2 (sub1 (* size unit))))]))
 
+
 (define (fixed-integer-max-value type)
   (match-let ([(fixed-integer size unit signed? _ _) type])
     (if signed? (expt 2 (sub1 (* size unit)))
       (expt 2 (* size unit)))))
+
 
 (define (fixed-integer-predicate type)
   (let ([min (fixed-integer-min-value type)]
@@ -135,12 +144,14 @@
            (>= x min)
            (<= x max)))))
 
+
 (define (fixed-signed
          size
          #:unit [unit 1]
          #:endianness [endianness 'big]
          #:bit-endianness [bit-endianness 'little])
   (fixed-integer size unit #t endianness bit-endianness))
+
 
 (define (fixed-unsigned
          size
@@ -183,42 +194,56 @@
 (define nint512-little (fixed-signed 512 #:endianness 'little))
 
 
-
-
+;;
+;; ... Fixed Length Strings 8859-1
+;;
 (struct fixed-string
   (length padding-character padding-side))
+
 
 (define (padding-side? x)
   (and (symbol? x)
        (or (eq? 'left x)
            (eq? 'right x))))
 
+
 (define (byte-char? x)
   (and (char? x)
        (byte? (char->integer x))))
 
 
+;;
+;; ... Fixed Length Arrays of Fixed Size Types
+;;
 (struct fixed-array
   (element-type length)
   #:transparent)
 
+
+;;
+;; ... Fixed Tuple of Fixed Size Types
+;;
 (struct fixed-tuple
   (components)
   #:transparent)
 
+
 (struct fixed-tuple-super
   (type)
   #:transparent)
+
 
 (define (fixed-tuple-supers fixed-tuple)
   (for/list ([component (fixed-tuple-components)]
              #:when (fixed-tuple-super? component))
     component))
 
+
 (define (fixed-tuple-super-count fixed-tuple)
   (for/sum ([component (fixed-tuple-components fixed-tuple)]
             #:when (fixed-tuple-super? component))
     1))
+
 
 (define (fixed-tuple-element-count fixed-tuple)
   (for/sum ([component (fixed-tuple-components fixed-tuple)])
@@ -226,8 +251,10 @@
       [(fixed-tuple-super super-type) (fixed-tuple-element-count super-type)]
       [(? fixed-size-type?) 1])))
 
+
 (define (fixed-tuple-super-ref fixed-tuple index)
   (list-ref (fixed-tuple-supers fixed-tuple) index))
+
 
 (define (fixed-tuple-elements tuple)
   (define (recur components accum)
@@ -239,37 +266,48 @@
          (recur more-components (cons component accum))])))
   (recur (fixed-tuple-components tuple) '()))
 
+
 (define (fixed-tuple-element-offsets-in-bits fixed-tuple)
   (for/fold ([offsets '(0)] #:result (reverse offsets))
       ([element (butlast (fixed-tuple-elements fixed-tuple))])
     (cons (+ (car offsets) (fixed-size-in-bits element))
           offsets)))
 
+
+;;
+;; ... Fixed Record of Fixed Size Types
+;;
 (struct fixed-record
   (components)
   #:transparent)
+
 
 (struct fixed-record-field
   (name type)
   #:transparent)
 
+
 (struct fixed-record-super
   (name type)
   #:transparent)
 
+
 (define (fixed-record-component? arg)
   (or (fixed-record-field? arg)
       (fixed-record-super? arg)))
+
 
 (define (fixed-record-direct-supers record)
   (for/list ([component (fixed-record-components record)]
              #:when (fixed-record-super? component))
     component))
 
+
 (define (fixed-record-direct-super-count record)
   (for/sum ([component (fixed-record-components record)]
             #:when (fixed-record-super? component))
     1))
+
 
 (define (fixed-record-supers record)
   (define (recur components accum)
@@ -280,8 +318,10 @@
       ['() (reverse accum)]))
   (recur (fixed-record-components record) '()))
 
+
 (define (fixed-record-super-count record)
   (length (fixed-record-supers record)))
+
 
 (define (fixed-record-fields record)
   (define (recur components accum)
@@ -293,12 +333,14 @@
       ['() (reverse accum)]))
   (recur (fixed-record-components record) '()))
 
+
 (define (fixed-record-field-count record)
   (for/sum ([component (fixed-record-components record)])
     (match component
       [(? fixed-record-field?) 1]
       [(fixed-record-super _ type)
        (fixed-record-field-count type)])))
+
 
 (define (fixed-record-elements record)
   (define (recur components accum)
@@ -310,9 +352,11 @@
       ['() (reverse accum)]))
   (recur (fixed-record-components record) '()))
 
+
 (define (unique-field-names? components)
   (unique-names?
    (component-field-names components)))
+
 
 (define (unique-super-names? components)
   (unique-names? (component-super-names components)))
@@ -331,6 +375,7 @@
       ['() (reverse accum)]))
   (recur components '()))
 
+
 (define (component-super-names components)
   (define (recur components accum)
     (match components
@@ -346,21 +391,7 @@
 (define (fixed-record-field-names record)
   (map fixed-record-field-name (fixed-record-fields record)))
 
-(define (unique-names? names)
-  (unsafe-unique? names symbol<?))
 
-(define (unique-numbers? numbers)
-  (unsafe-unique? numbers <))
-
-
-(define (unique-name-integer-pairs? x)
-  (and (list? x)
-       (for/and ([item x])
-         (and (pair? item)
-              (symbol? (car item))
-              (exact-integer? (cdr item))))
-       (unique-names? (map car x))
-       (unique-numbers? (map cdr x))))
 
 
 (define (enum-type-guard type named-values name)
@@ -375,29 +406,36 @@
          (filter (λ (named-value) (pred? (cdr named-value))) named-values)
          (filter (λ (named-value) (not (pred? (cdr named-value)))) named-values))))))
 
+
 (define enum-type-value-error
   "When constructing the an enum type, not all of the enum values are members of the value type.
 \t    value type: ~a
 \t  valid values: ~a
 \tinvalid values: ~a")
 
+
 (struct enum-type
   (value-type named-values)
   #:guard enum-type-guard)
 
+
 (define (enum-type-names type)
   (map car (enum-type-named-values type)))
 
+
 (define (enum-type-values type)
   (map cdr (enum-type-named-values type)))
+
 
 (define (enum-type-value-predicate type)
   (let ([values (apply set (enum-type-values type))])
     (λ (x) (set-member? values x))))
 
+
 (define (enum-type-name-predicate type)
   (let ([names (apply set (enum-type-names type))])
     (λ (x) (set-member? names x))))
+
 
 (define (fixed-size-type? arg)
   (match arg
@@ -409,6 +447,7 @@
          (? enum-type?))
      #t]
     [_ #f]))
+
 
 (define (fixed-size-in-bits arg)
   (match arg
@@ -444,11 +483,13 @@
                     (set-subtract (list->set variant-names) (list->set discriminant-names))))]
           [else (values discriminant variants)])))
 
+
 (define discriminated-union-missing-variants-error
   "Some variants are missing for a discriminated union:
 \t     discriminant: ~a
 \t    variant names: ~a
 \t missing variants: ~a")
+
 
 (define discriminated-union-extra-variants-error
   "Some variants are missing for a discriminated union:
@@ -460,12 +501,69 @@
   (discriminant variants))
 
 
+(struct dynamically-sized-array
+  (length-type
+   element-type
+   minimum-length
+   maximum-length))
+
+
 (define (dynamically-sized-type? x)
   (match x
     [(? discriminated-union?) #t]
     [_ #f]))
 
 
+(define (minimum-size-in-bits type)
+  (if (fixed-size-type? type)
+      (fixed-size-in-bits type)
+    (minimum-dynamic-size-in-bits type)))
+
+
+(define (minimum-dynamic-size-in-bits type)
+  (match type
+    [(discriminated-union discriminant variants)
+     (+ (fixed-size-in-bits discriminant)
+        (apply min (map (λ (variant) (minimum-size-in-bits (cdr variant))) variants)))]
+    [(dynamically-sized-array length-type element-type minimum-length maximum-length)
+     (+ (minimum-size-in-bits length-type)
+        (* minimum-length (minimum-size-in-bits element-type)))]))
+
+
+(define (maximum-size-in-bits type)
+  (if (fixed-size-type? type)
+      (fixed-size-in-bits type)
+    (maximum-dynamic-size-in-bits type)))
+
+
+(define (maximum-dynamic-size-in-bits type)
+  (match type
+    [(discriminated-union discriminant variants)
+     (+ (fixed-size-in-bits discriminant)
+        (apply max (map (λ (variant) (maximum-size-in-bits (cdr variant))) variants)))]
+    [(dynamically-sized-array length-type element-type minimum-length maximum-length)
+     (+ (minimum-dynamic-size-in-bits length-type)
+        (* maximum-length (maximum-size-in-bits element-type)))]))
+
+
 (define (wire-format? x)
   (or (fixed-size-type? x)
       (dynamically-sized-type? x)))
+
+
+(define (unique-names? names)
+  (unsafe-unique? names symbol<?))
+
+
+(define (unique-numbers? numbers)
+  (unsafe-unique? numbers <))
+
+
+(define (unique-name-integer-pairs? x)
+  (and (list? x)
+       (for/and ([item x])
+         (and (pair? item)
+              (symbol? (car item))
+              (exact-integer? (cdr item))))
+       (unique-names? (map car x))
+       (unique-numbers? (map cdr x))))

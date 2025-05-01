@@ -267,7 +267,6 @@
     (it "constructs a discriminated-union"
       (check-true (discriminated-union? some-type))))
 
-
   (describe "fixed-size-in-bits"
     (it "returns the size of fixed size types in bits"
       (context "with a fixed integer type defined"
