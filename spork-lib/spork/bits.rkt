@@ -18,6 +18,9 @@
          [index (bits) (and/c natural-number/c (</c (bits-size bits)))]
          [bit bit/c])
         [result bits?])]
+  [bits-clear-byte
+   (->i ([bits bits?] [spec (bits) (byte-in-range/c (bits-size bits))])
+        [result bits?])]
   [bits-load-byte
    (->i ([bits bits?] [spec (bits) (byte-in-range/c (bits-size bits))])
         [result natural-number/c])]
@@ -45,7 +48,7 @@
    (λ (spec)
      (and (byte-spec? spec)
           (match-let ([(byte-spec size position) spec])
-            (< (+ size position) bits-size))))))
+            (<= (+ size position) bits-size))))))
 
 (define/contract (slice-in-range/c bits-size position)
   (-> natural-number/c natural-number/c contract?)
@@ -89,7 +92,8 @@
      (sub1 (arithmetic-shift 1 (bits-size bs)))))
 
 (struct byte-spec
-  (size position))
+  (size position)
+  #:transparent)
 
 (define (bits-load-byte bs spec)
   (match-let ([(byte-spec size position) spec]
@@ -98,19 +102,19 @@
                  (arithmetic-shift data (- position)))))
 
 (define (bits-store-byte bs spec value)
-  (let ([cleared-data (bits-clear-byte bs spec)])
+  (match-let ([(bits _ data) (bits-clear-byte bs spec)])
     (struct-copy bits bs
         [data (bitwise-ior
-               cleared-data
+               data
                (arithmetic-shift value (byte-spec-position spec)))])))
 
 (define (bits-clear-byte bs spec)
   (match-let ([(bits size data) bs]
               [(byte-spec byte-size byte-position) spec])
     (let ([byte-upper-bound (+ byte-size byte-position)])
-      (bitwise-and
-       (arithmetic-shift (ones (- size byte-upper-bound)) byte-upper-bound)
-       (ones byte-position)))))
+      (struct-copy bits bs
+          [data (bitwise-and data (+ (arithmetic-shift (ones (- size byte-upper-bound)) byte-upper-bound)
+                                     (ones byte-position)))]))))
 
 (define (bits-get-slice bs spec)
   (bits (byte-spec-size spec)

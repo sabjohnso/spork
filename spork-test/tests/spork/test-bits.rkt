@@ -73,4 +73,21 @@
       (define bits (make-bits 32 #xABAB00))
       (check-equal? (bits-get-slice bits (byte-spec 16 8))
                     (make-bits 16 #xABAB))
-      (check-equal? bits (bits-set-slice (make-bits 32) 8 (make-bits 16 #xABAB))))))
+      (check-equal? bits (bits-set-slice (make-bits 32) 8 (make-bits 16 #xABAB)))))
+
+
+  (describe "bits-clear-byte"
+    (define bits (make-bits 32  #xffffffff))
+    (check-equal? (bits-clear-byte bits (byte-spec 8 8))
+                  (make-bits 32 #xffff00ff)))
+
+
+  (describe "bits-store-byte"
+    (define bits-per-byte 8)
+    (define n 4)
+    (define bits
+      (for/fold ([bits (make-bits (* n bits-per-byte))])
+          ([i (in-range n)])
+        (bits-store-byte bits (byte-spec bits-per-byte (* i bits-per-byte)) (char->integer #\x))))
+    (for ([i (in-range n)])
+      (check-equal? (char->integer #\x) (bits-load-byte bits (byte-spec bits-per-byte (* i bits-per-byte)))))))
