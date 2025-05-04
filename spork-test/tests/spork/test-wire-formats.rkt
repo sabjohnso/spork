@@ -50,24 +50,24 @@
 
     (describe "fixed-unsigned"
       (it "it constructs fixed unsigned integer types"
-        (check-true (fixed-integer? (fixed-unsigned 64)))
-        (check-false (fixed-integer-signed? (fixed-unsigned 64)))
-        (check-equal? (fixed-integer-endianness (fixed-unsigned 64)) 'big)
-        (check-equal? (fixed-integer-endianness (fixed-unsigned 64 #:endianness 'little)) 'little)))
+        (check-true (fixed-integer? (fixed-unsigned 8 #:endianness big)))
+        (check-false (fixed-integer-signed? (fixed-unsigned 8 #:endianness big)))
+        (check-equal? (fixed-integer-endianness (fixed-unsigned 8 #:endianness big)) big)
+        (check-equal? (fixed-integer-endianness (fixed-unsigned 8 #:endianness little)) little)))
 
     (describe "fixed-signed"
       (it "it constructs fixed signed integer types"
-        (check-true (fixed-integer? (fixed-signed 64)))
-        (check-true (fixed-integer-signed? (fixed-signed 64))))
+        (check-true (fixed-integer? (fixed-signed 8 #:endianness 'big)))
+        (check-true (fixed-integer-signed? (fixed-signed 8 #:endianness 'big))))
       (it "produces big endian types by default"
-        (check-equal? (fixed-integer-endianness (fixed-signed 64)) 'big))
+        (check-equal? (fixed-integer-endianness (fixed-signed 8 #:endianness big)) 'big))
       (it "can optionally have the endianness specified"
-        (check-equal? (fixed-integer-endianness (fixed-signed 64 #:endianness 'little)) 'little)))
+        (check-equal? (fixed-integer-endianness (fixed-signed 8 #:endianness 'little)) 'little)))
 
     (describe "fixed-integer-bits-writer"
       (it "builds a function to write a fixed integer value to bits"
         (context "with an unsigend little endian fixed integer type"
-          (define uint16-little (fixed-unsigned 16 #:endianness 'little))
+          (define uint16-little (fixed-unsigned 2 #:endianness little))
           (define read-bits/uint16-little (fixed-integer-bits-reader uint16-little))
           (define write-bits/uint16-little (fixed-integer-bits-writer uint16-little))
           (it "returns a function that accepts an appropriately sized exact unsigned integer"
@@ -92,7 +92,7 @@
             (define offset 500)
             (check-exn exn:fail? (thunk (write-bits/uint16-little input-bits offset 0)))))
         (context "with an unsigned big endian fixed integer type"
-          (define uint16-big (fixed-unsigned 16))
+          (define uint16-big (fixed-unsigned 2 #:endianness big))
           (define read-bits/uint16-big (fixed-integer-bits-reader uint16-big))
           (define write-bits/uint16-big (fixed-integer-bits-writer uint16-big))
           (it "returns a function that acceps an appropriately sized exact unsigned integer"
@@ -102,7 +102,7 @@
             (define output-bits (write-bits/uint16-big input-bits offset value))
             (check-equal?  (read-bits/uint16-big output-bits offset) value)))
         (context "with a signed little endian fixed integer type"
-          (define int16-little (fixed-signed 16 #:endianness little))
+          (define int16-little (fixed-signed 2 #:endianness little))
           (define read-bits/int16-little (fixed-integer-bits-reader int16-little))
           (define write-bits/int16-little (fixed-integer-bits-writer int16-little))
           (it "returns a function that accepts appropriately sized exact integers"
@@ -126,7 +126,7 @@
 
           )
         (context "with a signed big endian fixed integer type"
-          (define int16-big (fixed-signed 16))
+          (define int16-big (fixed-signed 2 #:endianness big))
           (define read-bits/int16-big (fixed-integer-bits-reader int16-big))
           (define write-bits/int16-big (fixed-integer-bits-writer int16-big))
           (it "returns a function that accepts appropriately sized exact exact integer"
@@ -329,15 +329,15 @@
       (check-equal?
        (fixed-record-fields record)
        (list
-        (fixed-record-field 'f00 (fixed-integer 16 1 #f 'little 'little))
-        (fixed-record-field 'f01 (fixed-integer 32 1 #f 'little 'little))
-        (fixed-record-field 'f1a0 (fixed-integer 64 1 #f 'little 'little))
-        (fixed-record-field 'f1a1 (fixed-integer 8 1 #f 'little 'little))
-        (fixed-record-field 'f (fixed-integer 8 1 #f 'little 'little))
-        (fixed-record-field 'f1b0 (fixed-integer 8 1 #f 'little 'little))
+        (fixed-record-field 'f00 (fixed-integer 2 8 #f 'little 'little))
+        (fixed-record-field 'f01 (fixed-integer 4 8 #f 'little 'little))
+        (fixed-record-field 'f1a0 (fixed-integer 8 8 #f 'little 'little))
+        (fixed-record-field 'f1a1 (fixed-integer 1 8 #f 'little 'little))
+        (fixed-record-field 'f (fixed-integer 1 8 #f 'little 'little))
+        (fixed-record-field 'f1b0 (fixed-integer 1 8 #f 'little 'little))
         (fixed-record-field
          'f1b1
-         (fixed-array (fixed-integer 8 1 #f 'little 'little) 2)))))
+         (fixed-array (fixed-integer 1 8 #f 'little 'little) 2)))))
     (it "fails when field names are duplicated"
       (check-exn
        exn:fail?
@@ -385,7 +385,7 @@
     (it "constructs a fixed-size-type?"
       (check-true (fixed-size-type? abc)))
 
-    (it "has a size that is the same as its value type"
+    (it "has a size that is the same as its value type"f
       (check-equal? (fixed-size-in-bits abc)
                     (fixed-size-in-bits value-type))))
 

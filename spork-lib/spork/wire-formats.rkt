@@ -160,7 +160,7 @@
 
 (define (fixed-signed
          size
-         #:unit [unit 1]
+         #:unit [unit 8]
          #:endianness [endianness 'big]
          #:bit-endianness [bit-endianness 'little])
   (fixed-integer size unit #t endianness bit-endianness))
@@ -168,43 +168,43 @@
 
 (define (fixed-unsigned
          size
-         #:unit [unit 1]
+         #:unit [unit 8]
          #:endianness [endianness 'big]
          #:bit-endianness [bit-endianness 'little])
   (fixed-integer size unit #f endianness bit-endianness))
 
 
-(define uint8-big    (fixed-unsigned   8))
-(define uint16-big   (fixed-unsigned  16))
-(define uint32-big   (fixed-unsigned  32))
-(define uint64-big   (fixed-unsigned  64))
-(define uint128-big  (fixed-unsigned 128))
-(define uint256-big  (fixed-unsigned 256))
-(define uint512-big  (fixed-unsigned 512))
+(define uint8-big    (fixed-unsigned  1 #:endianness big))
+(define uint16-big   (fixed-unsigned  2 #:endianness big))
+(define uint32-big   (fixed-unsigned  4 #:endianness big))
+(define uint64-big   (fixed-unsigned  8 #:endianness big))
+(define uint128-big  (fixed-unsigned 16 #:endianness big))
+(define uint256-big  (fixed-unsigned 32 #:endianness big))
+(define uint512-big  (fixed-unsigned 64 #:endianness big))
 
-(define int8-big    (fixed-signed   8))
-(define int16-big   (fixed-signed  16))
-(define int32-big   (fixed-signed  32))
-(define int64-big   (fixed-signed  64))
-(define int128-big  (fixed-signed 128))
-(define int256-big  (fixed-signed 256))
-(define int512-big  (fixed-signed 512))
+(define int8-big    (fixed-signed  1 #:endianness big))
+(define int16-big   (fixed-signed  2 #:endianness big))
+(define int32-big   (fixed-signed  4 #:endianness big))
+(define int64-big   (fixed-signed  8 #:endianness big))
+(define int128-big  (fixed-signed 16 #:endianness big))
+(define int256-big  (fixed-signed 32 #:endianness big))
+(define int512-big  (fixed-signed 64 #:endianness big))
 
-(define uint8-little    (fixed-unsigned 8   #:endianness 'little))
-(define uint16-little   (fixed-unsigned 16  #:endianness 'little))
-(define uint32-little   (fixed-unsigned 32  #:endianness 'little))
-(define uint64-little   (fixed-unsigned 64  #:endianness 'little))
-(define uint128-little  (fixed-unsigned 128 #:endianness 'little))
-(define uint256-little  (fixed-unsigned 256 #:endianness 'little))
-(define unint512-little (fixed-unsigned 512 #:endianness 'little))
+(define uint8-little    (fixed-unsigned  1 #:endianness little))
+(define uint16-little   (fixed-unsigned  2 #:endianness little))
+(define uint32-little   (fixed-unsigned  4 #:endianness little))
+(define uint64-little   (fixed-unsigned  8 #:endianness little))
+(define uint128-little  (fixed-unsigned 16 #:endianness little))
+(define uint256-little  (fixed-unsigned 32 #:endianness little))
+(define unint512-little (fixed-unsigned 64 #:endianness little))
 
-(define int8-little    (fixed-signed 8   #:endianness 'little))
-(define int16-little   (fixed-signed 16  #:endianness 'little))
-(define int32-little   (fixed-signed 32  #:endianness 'little))
-(define int64-little   (fixed-signed 64  #:endianness 'little))
-(define int128-little  (fixed-signed 128 #:endianness 'little))
-(define int256-little  (fixed-signed 256 #:endianness 'little))
-(define nint512-little (fixed-signed 512 #:endianness 'little))
+(define int8-little    (fixed-signed  1 #:endianness little))
+(define int16-little   (fixed-signed  2 #:endianness little))
+(define int32-little   (fixed-signed  4 #:endianness little))
+(define int64-little   (fixed-signed  8 #:endianness little))
+(define int128-little  (fixed-signed 16 #:endianness little))
+(define int256-little  (fixed-signed 32 #:endianness little))
+(define nint512-little (fixed-signed 64 #:endianness little))
 
 ;; readers
 
