@@ -73,7 +73,12 @@
       (define bits (make-bits 32 #xABAB00))
       (check-equal? (bits-get-slice bits (byte-spec 16 8))
                     (make-bits 16 #xABAB))
-      (check-equal? bits (bits-set-slice (make-bits 32) 8 (make-bits 16 #xABAB)))))
+      (check-equal? bits (bits-set-slice (make-bits 32) 8 (make-bits 16 #xABAB))))
+    (context "with some bits written highest indices"
+      (define bits (make-bits 32 #xABAB0000))
+      (check-equal? (bits-get-slice bits (byte-spec 16 16))
+                    (make-bits 16 #xABAB))
+      (check-equal? bits (bits-set-slice (make-bits 32) 16 (make-bits 16 #xABAB)))))
 
 
   (describe "bits-clear-byte"

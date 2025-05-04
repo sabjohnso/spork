@@ -32,7 +32,8 @@
   [bits-get-slice (->i ([bits bits?] [spec (bits) (byte-in-range/c (bits-size bits))])
                        [result bits?])]
   [bits-set-slice (->i ([bits bits?] [position natural-number/c]
-                        [slice (bits position) (slice-in-range/c (bits-size bits) position)])
+                        [slice (bits position)
+                               (and/c bits? (slice-in-range/c (bits-size bits) position))])
                        [result bits?])]))
 
 (require srfi/54)
@@ -58,7 +59,7 @@
    (λ (slice)
      (and (bits? slice)
           (match-let ([(bits size _) slice])
-            (< (+ size position) bits-size))))))
+            (<= (+ size position) bits-size))))))
 
 (struct bits
   (size data)
