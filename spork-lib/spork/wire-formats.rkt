@@ -161,7 +161,7 @@
 (define (fixed-signed
          size
          #:unit [unit 8]
-         #:endianness [endianness 'big]
+         #:endianness [endianness 'little]
          #:bit-endianness [bit-endianness 'little])
   (fixed-integer size unit #t endianness bit-endianness))
 
@@ -169,7 +169,7 @@
 (define (fixed-unsigned
          size
          #:unit [unit 8]
-         #:endianness [endianness 'big]
+         #:endianness [endianness 'little]
          #:bit-endianness [bit-endianness 'little])
   (fixed-integer size unit #f endianness bit-endianness))
 

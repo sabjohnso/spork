@@ -52,15 +52,17 @@
       (it "it constructs fixed unsigned integer types"
         (check-true (fixed-integer? (fixed-unsigned 8 #:endianness big)))
         (check-false (fixed-integer-signed? (fixed-unsigned 8 #:endianness big)))
-        (check-equal? (fixed-integer-endianness (fixed-unsigned 8 #:endianness big)) big)
+        (check-equal? (fixed-integer-endianness (fixed-unsigned 8)) little)
         (check-equal? (fixed-integer-endianness (fixed-unsigned 8 #:endianness little)) little)))
 
     (describe "fixed-signed"
       (it "it constructs fixed signed integer types"
         (check-true (fixed-integer? (fixed-signed 8 #:endianness 'big)))
+
         (check-true (fixed-integer-signed? (fixed-signed 8 #:endianness 'big))))
-      (it "produces big endian types by default"
-        (check-equal? (fixed-integer-endianness (fixed-signed 8 #:endianness big)) 'big))
+      (it "it producess little endian values by default"
+        (check-equal? (fixed-integer-endianness (fixed-signed 8 )) 'little))
+
       (it "can optionally have the endianness specified"
         (check-equal? (fixed-integer-endianness (fixed-signed 8 #:endianness 'little)) 'little)))
 
@@ -385,7 +387,7 @@
     (it "constructs a fixed-size-type?"
       (check-true (fixed-size-type? abc)))
 
-    (it "has a size that is the same as its value type"f
+    (it "has a size that is the same as its value type"
       (check-equal? (fixed-size-in-bits abc)
                     (fixed-size-in-bits value-type))))
 
