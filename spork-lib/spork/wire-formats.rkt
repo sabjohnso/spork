@@ -91,8 +91,8 @@
 
   [fixed-record-bits-writer (-> fixed-record? (-> bits? natural-number/c bits? bits?))]
   [fixed-record-bits-reader (-> fixed-record? (-> bits? natural-number/c bits?))]
-  [fixed-record-bits-field-writer (-> fixed-record? symbol? (-> bits? natural-number/c any/c bits?))]
-  [fixed-record-bits-field-reader  (-> fixed-record? symbol? (-> bits? natural-number/c any/c))]
+  [fixed-record-bits-field-writer (-> fixed-record? symbol? (-> bits? any/c bits?))]
+  [fixed-record-bits-field-reader  (-> fixed-record? symbol? (-> bits? any/c))]
 
   ;; FIXME: The number of arguments should match the number of fields
   [fixed-record-bits-constructor (-> fixed-record? (->* () () #:rest (listof any/c) bits?))]
@@ -565,7 +565,7 @@ permissible length of the `fixed-string` type (~a).
     (for/fold ([bits (make-bits (fixed-size-in-bits type))])
         ([field-value field-values]
          [field-writer field-writers])
-      (field-writer bits 0 field-value)))
+      (field-writer bits field-value)))
   bits-constructor)
 
 (define (fixed-record-bits-assoc-constructor type)
@@ -578,7 +578,7 @@ permissible length of the `fixed-string` type (~a).
     (for/fold ([bits (make-bits (fixed-size-in-bits type))])
         ([field-name/value labeled-field-values])
       (match-let ([(cons name value) field-name/value])
-        ((hash-ref field-writers name) bits 0 value))))
+        ((hash-ref field-writers name) bits value))))
   bits-constructor)
 
 
@@ -592,22 +592,22 @@ permissible length of the `fixed-string` type (~a).
 (define (fixed-record-bits-writer type)
   (define nbits (fixed-size-in-bits type))
   (define (record-bits-writer bits offset record-bits)
-    (bits-set-slice bits (byte-spec nbits offset) record-bits))
+    (bits-set-slice bits offset record-bits))
   record-bits-writer)
 
 
 (define (fixed-record-bits-field-reader type field-name)
   (match-let ([(cons field-type field-offset) (fixed-record-field-type-and-offset type field-name)])
     (define field-reader (bits-reader field-type))
-    (define (field-bits-reader bits offset)
-      (field-reader bits (+ offset field-offset)))
+    (define (field-bits-reader bits)
+      (field-reader bits field-offset))
     field-bits-reader))
 
 (define (fixed-record-bits-field-writer type field-name)
   (match-let ([(cons field-type field-offset) (fixed-record-field-type-and-offset type field-name)])
     (define field-writer (bits-writer field-type))
-    (define (field-bits-writer bits offset value)
-      (field-writer bits (+ offset field-offset) value))
+    (define (field-bits-writer bits value)
+      (field-writer bits field-offset value))
     field-bits-writer))
 
 

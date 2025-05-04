@@ -366,6 +366,7 @@
                             (list (fixed-record-field 'x  int64-little)
                                   (fixed-record-field 'y  int64-little)
                                   (fixed-record-field 'id uint8-little))))
+
         (define make-point (fixed-record-bits-constructor point-type))
         (define point-x  (fixed-record-bits-field-reader point-type  'x))
         (define point-y  (fixed-record-bits-field-reader point-type  'y))
@@ -376,9 +377,43 @@
         (check-true (procedure? make-point))
         (define point (make-point x y id))
 
-        (check-equal? (point-x  point 0)  x)
-        (check-equal? (point-y  point 0)  y)
-        (check-equal? (point-id point 0) id))))
+        (check-equal? (point-x  point)  x)
+        (check-equal? (point-y  point)  y)
+        (check-equal? (point-id point) id)
+
+
+        (define triangle-type (fixed-record
+                               (list (fixed-record-field 'v1 point-type)
+                                     (fixed-record-field 'v2 point-type)
+                                     (fixed-record-field 'v3 point-type))))
+        (define make-triangle (fixed-record-bits-constructor triangle-type))
+        (define triangle-v1 (fixed-record-bits-field-reader triangle-type 'v1))
+        (define triangle-v2 (fixed-record-bits-field-reader triangle-type 'v2))
+        (define triangle-v3 (fixed-record-bits-field-reader triangle-type 'v3))
+
+        (define x1 0)
+        (define y1 0)
+        (define id1 0)
+
+        (define x2 0)
+        (define y2 1)
+        (define id2 1)
+
+        (define x3 1)
+        (define y3 1)
+        (define id3 2)
+
+        (define triangle
+          (make-triangle
+           (make-point x1 y1 id1)
+           (make-point x2 y2 id2)
+           (make-point x3 y3 id3)))
+
+        (check-true (bits? triangle))
+
+        (check-equal? (triangle-v1 triangle) (make-point x1 y1 id1))
+        (check-equal? (triangle-v2 triangle) (make-point x2 y2 id2))
+        (check-equal? (triangle-v3 triangle) (make-point x3 y3 id3)))))
 
   (describe "fixed-size-type?"
     (it "is a predicate that recognizes fixed size types"
