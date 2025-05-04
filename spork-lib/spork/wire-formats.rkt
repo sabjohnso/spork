@@ -3,6 +3,10 @@
 (provide
  (contract-out
 
+  [endian? predicate/c]
+  [big endian?]
+  [little endian?]
+
   (struct fixed-integer
     ([size natural-number/c]
      [unit exact-positive-integer?]
@@ -48,11 +52,16 @@
   [int128-little  fixed-integer?]
   [int256-little  fixed-integer?]
   [nint512-little fixed-integer?]
+  [fixed-integer-bits-reader (-> fixed-integer? (-> bits? natural-number/c exact-integer?))]
+  [fixed-integer-bits-writer (-> fixed-integer? (-> bits? natural-number/c exact-integer? bits?))]
 
   (struct fixed-string
     ([length exact-positive-integer?]
      [padding-character byte-char?]
      [padding-side padding-side?]))
+
+  [fixed-string-bits-reader (-> fixed-string? (-> bits? natural-number/c bytes?))]
+  [fixed-string-bits-writer (-> fixed-string? (-> bits? natural-number/c bytes? bits?))]
 
   (struct fixed-array
     ([element-type fixed-size-type?]
@@ -96,7 +105,6 @@
     ([discriminant enum-type?]
      [variants (listof (cons/c symbol? wire-format?))]))
 
-  [endian? predicate/c]
   [fixed-size-type? predicate/c]
   [fixed-size-in-bits (-> fixed-size-type? natural-number/c)]
 
@@ -105,6 +113,8 @@
 
 (require spork/list-extras spork/bits)
 
+(define bits-per-octet 8)
+
 
 (define endian
   (set 'little 'big))
@@ -112,6 +122,9 @@
 
 (define (endian? arg)
   (set-member? endian arg))
+
+(define little 'little)
+(define big 'big)
 
 
 ;;
@@ -193,12 +206,167 @@
 (define int256-little  (fixed-signed 256 #:endianness 'little))
 (define nint512-little (fixed-signed 512 #:endianness 'little))
 
+;; readers
+
+(define (fixed-integer-bits-reader type)
+  (match type
+    [(fixed-integer _ _ #f 'little 'little) (fixed-integer-bits-reader/unsigned-little/little type)]
+    [(fixed-integer _ _ #t 'little 'little) (fixed-integer-bits-reader/signed-little/little   type)]
+    [(fixed-integer _ _ #f 'big    'little) (fixed-integer-bits-reader/unsigned-big/little    type)]
+    [(fixed-integer _ _ #t 'big    'little) (fixed-integer-bits-reader/signed-big/little      type)]
+    [(fixed-integer _ _ #f 'little 'big)    (fixed-integer-bits-reader/unsigned-little/big    type)]
+    [(fixed-integer _ _ #t 'little 'big)    (fixed-integer-bits-reader/signed-little/big      type)]
+    [(fixed-integer _ _ #f 'big    'big)    (fixed-integer-bits-reader/unsigned-big/big       type)]
+    [(fixed-integer _ _ #t 'big    'big)    (fixed-integer-bits-reader/signed-big/big         type)]))
+
+(define (fixed-integer-bits-reader/unsigned-little/little type)
+  (match-let ([(fixed-integer size unit _ _ _) type])
+    (define nbits (* size unit))
+    (define (read-bits bits offset)
+      (bits-load-byte bits (byte-spec nbits offset)))
+    read-bits))
+
+(define (fixed-integer-bits-reader/signed-little/little type)
+  (match-let ([(fixed-integer size unit _ _ _) type])
+    (define nbits (* size unit))
+    (define unsigned->signed (make-unsigned->signed nbits))
+    (define (read-bits bits offset)
+      (unsigned->signed (bits-load-byte bits (byte-spec nbits offset))))
+    read-bits))
+
+(define (fixed-integer-bits-reader/unsigned-big/little type)
+  (match-let ([(fixed-integer size unit _ _ _) type])
+    (define nbits (* size unit))
+    (define reverse-bytes (make-byte-reverser size unit))
+    (define (read-bits bits offset)
+      (reverse-bytes (bits-load-byte bits (byte-spec nbits offset))))
+    read-bits))
+
+(define (fixed-integer-bits-reader/signed-big/little      type)
+  (match-let ([(fixed-integer size unit _ _ _) type])
+    (define nbits (* size unit))
+    (define reverse-bytes (make-byte-reverser size unit))
+    (define unsigned->signed (make-unsigned->signed nbits))
+    (define (read-bits bits offset)
+      (unsigned->signed (reverse-bytes (bits-load-byte bits (byte-spec nbits offset)))))
+    read-bits))
+
+(define (fixed-integer-bits-reader/unsigned-little/big    type)
+  (error "not implemented"))
+
+(define (fixed-integer-bits-reader/signed-little/big      type)
+  (error "not implemented"))
+
+(define (fixed-integer-bits-reader/unsigned-big/big       type)
+  (error "not implemented"))
+
+(define (fixed-integer-bits-reader/signed-big/big         type)
+  (error "not implemented"))
+
+;; writers
+
+(define (fixed-integer-bits-writer type)
+  (match type
+    [(fixed-integer _ _ #f 'little 'little) (fixed-integer-bits-writer/unsigned-little/little type)]
+    [(fixed-integer _ _ #t 'little 'little) (fixed-integer-bits-writer/signed-little/little   type)]
+    [(fixed-integer _ _ #f 'big    'little) (fixed-integer-bits-writer/unsigned-big/little    type)]
+    [(fixed-integer _ _ #t 'big    'little) (fixed-integer-bits-writer/signed-big/little      type)]
+    [(fixed-integer _ _ #f 'little 'big)    (fixed-integer-bits-writer/unsigned-little/big    type)]
+    [(fixed-integer _ _ #t 'little 'big)    (fixed-integer-bits-writer/signed-little/big      type)]
+    [(fixed-integer _ _ #f 'big    'big)    (fixed-integer-bits-writer/unsigned-big/big       type)]
+    [(fixed-integer _ _ #t 'big    'big)    (fixed-integer-bits-writer/signed-big/big         type)]))
+
+(define (fixed-integer-bits-writer/unsigned-little/little type)
+  (match-let ([(fixed-integer size unit  _ _ _) type])
+    (define nbits (* size unit))
+     (define valid-value? (fixed-integer-predicate type))
+     (define/contract (write-bits bits offset exact-integer)
+       (-> bits? natural-number/c valid-value? bits?)
+       (bits-store-byte bits (byte-spec nbits offset) exact-integer))
+     write-bits))
+
+(define (fixed-integer-bits-writer/signed-little/little   type)
+  (match-let ([(fixed-integer size unit  _ _ _) type])
+    (define nbits (* size unit))
+    (define valid-value? (fixed-integer-predicate type))
+    (define signed->unsigned (make-signed->unsigned nbits))
+    (define/contract (write-bits bits offset exact-integer)
+       (-> bits? natural-number/c valid-value? bits?)
+       (bits-store-byte bits (byte-spec nbits offset) (signed->unsigned exact-integer)))
+     write-bits))
+
+(define (fixed-integer-bits-writer/unsigned-big/little type)
+  (match-let ([(fixed-integer size unit  _ _ _) type])
+    (define nbits (* size unit))
+    (define valid-value? (fixed-integer-predicate type))
+    (define reverse-bytes (make-byte-reverser size unit))
+    (define/contract (write-bits bits offset exact-integer)
+      (-> bits? natural-number/c valid-value? bits?)
+      (bits-store-byte bits (byte-spec nbits offset) (reverse-bytes exact-integer)))
+    write-bits))
+
+(define (fixed-integer-bits-writer/signed-big/little type)
+  (match-let ([(fixed-integer size unit  _ _ _) type])
+    (define nbits (* size unit))
+    (define valid-value? (fixed-integer-predicate type))
+    (define signed->unsigned (make-signed->unsigned nbits))
+    (define reverse-bytes (make-byte-reverser size unit))
+    (define/contract (write-bits bits offset exact-integer)
+      (-> bits? natural-number/c valid-value? bits?)
+      (bits-store-byte bits (byte-spec nbits offset) (reverse-bytes (signed->unsigned exact-integer))))
+    write-bits))
+
+(define (fixed-integer-bits-writer/unsigned-little/big    type)
+  (error "not implemented"))
+
+(define (fixed-integer-bits-writer/signed-little/big      type)
+  (error "not implemented"))
+
+(define (fixed-integer-bits-writer/unsigned-big/big       type)
+  (error "not implemented"))
+
+(define (fixed-integer-bits-writer/signed-big/big         type)
+  (error "not implemented"))
+
+
+(define (make-byte-reverser size unit)
+  (define byte-mask (sub1 (arithmetic-shift 1 unit)))
+  (define shift (- unit))
+  (define base (expt 2 unit))
+  (define (reverse-bytes big-byte)
+    (define reversed-bytes
+      (for/fold ([big-byte big-byte] [byte-list '()] #:result (reverse byte-list))
+          ([byte-index (in-range size)])
+            (values (arithmetic-shift big-byte shift)
+                    (cons (bitwise-and byte-mask big-byte) byte-list))))
+    (for/sum ([byte reversed-bytes]
+              [byte-index (in-naturals)])
+      (arithmetic-shift byte (* byte-index unit))))
+  reverse-bytes)
+
+(define (make-unsigned->signed nbits)
+  (define shift (- (sub1 nbits)))
+  (define max-plus (expt 2 nbits))
+  (define (unsigned->signed unsigned-integer)
+    (if (zero? (arithmetic-shift unsigned-integer shift))
+        unsigned-integer
+      (add1 (-  unsigned-integer max-plus))))
+  unsigned->signed)
+
+(define (make-signed->unsigned nbits)
+  (define max-plus (expt 2 nbits))
+  (define (signed->unsigned signed-integer)
+    (if (exact-nonnegative-integer? signed-integer)
+        signed-integer
+      (sub1 (+ max-plus signed-integer))))
+  signed->unsigned)
 
 ;;
 ;; ... Fixed Length Strings 8859-1
 ;;
 (struct fixed-string
-  (length padding-character padding-side))
+  (length padding-character padding-side)
+  #:transparent)
 
 
 (define (padding-side? x)
@@ -210,6 +378,76 @@
 (define (byte-char? x)
   (and (char? x)
        (byte? (char->integer x))))
+
+(define (fixed-string-bits-reader type)
+  (match-let ([(fixed-string length _ _) type])
+    (λ (bits offset)
+      (let ([bytes (make-bytes length)])
+        (for ([i (in-range length)])
+          (bytes-set! bytes i
+                      (bits-load-byte bits (byte-spec bits-per-octet (+ offset (* i bits-per-octet))))))
+        bytes))))
+
+(define (fixed-string-bits-writer type)
+  (match-let ([(fixed-string length padding-character padding-side) type])
+    (let ([padding-byte (char->integer padding-character)])
+
+      (define padding-byte (char->integer padding-character))
+
+      ;; Store the bytes in the bits
+      (define (store-bytes bits offset bytes)
+        (for/fold ([bits bits])
+            ([byte bytes]
+             [i (in-naturals)])
+          (bits-store-byte bits (byte-spec bits-per-octet (+ offset (* i bits-per-octet))) byte)))
+
+      ;; Store the padding bytes in the bits
+      (define (store-padding bits offset n)
+        (for/fold ([bits bits])
+            ([i (in-range n)])
+          (bits-store-byte bits (byte-spec bits-per-octet (+ offset (* i bits-per-octet)))
+                           padding-byte)))
+
+      ;; Format an error message about the input length being to long for the type
+      (define (bytes-length-error bytes)
+        (format bytes-exceeds-fixed-string-length
+          (bytes-length bytes)
+          (fixed-string-length type)
+          bytes
+          type))
+
+      ;; right padding variant writes the input, then the padding
+      (match padding-side
+        ['right
+         (λ (bits offset bytes)
+           (let ([n (bytes-length bytes)])
+             (cond [(< n length)
+                    (let ([bits (store-bytes bits offset bytes)])
+                      (store-padding bits (+ offset (* n bits-per-octet)) (- length n)))]
+                   [(= n length)
+                    (store-bytes bits offset bytes)]
+                   [(> n length)
+                    (error (bytes-length-error bytes))])))]
+
+        ;; left padding variant writes the padding, then the input
+        ['left
+         (λ (bits offset bytes)
+           (let ([n (bytes-length bytes)])
+             (cond [(< n length)
+                    (let* ([m (- length n)]
+                           [bits (store-padding bits offset m)])
+                      (store-bytes bits (+ offset (* m bits-per-octet)) bytes))]
+                   [(= n length)
+                    (store-bytes bits offset bytes)]
+                   [(> n length)
+                    (error (bytes-length-error bytes))])))]))))
+
+
+(define bytes-exceeds-fixed-string-length
+  "The length of the input bytes (~a) exceeds the
+permissible length of the `fixed-string` type (~a).
+\tbytes: ~S
+\tfixed string type: ~s")
 
 
 ;;
