@@ -359,6 +359,27 @@
                          (list (fixed-record-super 'super (fixed-record '()))
                                (fixed-record-super 'super (fixed-record '()))))))))
 
+  (describe "fixed record types"
+    (describe "fixed record constructor"
+      (context "with a fixed record type"
+        (define point-type (fixed-record
+                            (list (fixed-record-field 'x  int64-little)
+                                  (fixed-record-field 'y  int64-little)
+                                  (fixed-record-field 'id uint8-little))))
+        (define make-point (fixed-record-bits-constructor point-type))
+        (define point-x  (fixed-record-bits-field-reader point-type  'x))
+        (define point-y  (fixed-record-bits-field-reader point-type  'y))
+        (define point-id (fixed-record-bits-field-reader point-type 'id))
+        (define x   11)
+        (define y   12)
+        (define id 127)
+        (check-true (procedure? make-point))
+        (define point (make-point x y id))
+
+        (check-equal? (point-x  point 0)  x)
+        (check-equal? (point-y  point 0)  y)
+        (check-equal? (point-id point 0) id))))
+
   (describe "fixed-size-type?"
     (it "is a predicate that recognizes fixed size types"
       (it "recognizes fixed integer types"
