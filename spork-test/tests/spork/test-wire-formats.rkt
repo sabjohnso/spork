@@ -368,12 +368,31 @@
                                   (fixed-record-field 'id uint8-little))))
 
         (define make-point (fixed-record-bits-constructor point-type))
+        (define make-point-assoc (fixed-record-bits-assoc-constructor point-type))
         (define point-x  (fixed-record-bits-field-reader point-type  'x))
         (define point-y  (fixed-record-bits-field-reader point-type  'y))
         (define point-id (fixed-record-bits-field-reader point-type 'id))
         (define x   11)
         (define y   12)
         (define id 127)
+        (describe "fixed-record-bits-assoc-constructor"
+          (it "builds a function that constructs bits from an alist with the field names as keys"
+            (check-true (bits? (make-point-assoc '((x . 3) (y . 4) (id . 5)))))
+            (check-equal? (point-x  (make-point-assoc '())) 0)
+            (check-equal? (point-y  (make-point-assoc '())) 0)
+            (check-equal? (point-id (make-point-assoc '())) 0))
+
+          (it "builds a function that constructs bits from an alist with missing field names"
+            (check-true (bits? (make-point-assoc '((x . 3) (y . 4)))))
+            (check-equal? (point-x  (make-point-assoc '((x . 3) (y . 4)))) 3)
+            (check-equal? (point-y  (make-point-assoc '((x . 3) (y . 4)))) 4)
+            (check-equal? (point-id (make-point-assoc '((x . 3) (y . 4)))) 0))
+
+          (it "builds a function that constructs bits from an alist that may be empty"
+            (check-true (bits? (make-point-assoc '())))
+            (check-equal? (point-x  (make-point-assoc '())) 0)
+            (check-equal? (point-y  (make-point-assoc '())) 0)
+            (check-equal? (point-id (make-point-assoc '())) 0)))
         (check-true (procedure? make-point))
         (define point (make-point x y id))
 
@@ -413,7 +432,87 @@
 
         (check-equal? (triangle-v1 triangle) (make-point x1 y1 id1))
         (check-equal? (triangle-v2 triangle) (make-point x2 y2 id2))
-        (check-equal? (triangle-v3 triangle) (make-point x3 y3 id3)))))
+        (check-equal? (triangle-v3 triangle) (make-point x3 y3 id3))
+
+        (define make-triangle-assoc
+          (fixed-record-bits-assoc-constructor triangle-type))
+
+        (define triangle2
+          (make-triangle-assoc
+           `((v1 . ,(make-point x1 y1 id1))
+             (v2 . ,(make-point x2 y2 id2))
+             (v3 . ,(make-point x3 y3 id3)))))
+        (check-equal? triangle triangle2)))
+
+
+    (describe "fixed-record-super-writer"
+      (context "with a hierarchy of types"
+        (define type1 (fixed-record
+                       (list
+                        (fixed-record-field 'field1 uint8-little))))
+        (define type1-field1 (fixed-record-bits-field-reader type1 'field1))
+
+
+        (define type2 (fixed-record
+                       (list
+                        (fixed-record-super 'super1 type1)
+                        (fixed-record-field 'field2 uint8-little))))
+        (define type2-field1 (fixed-record-bits-field-reader type2 'field1))
+        (define type2-field2 (fixed-record-bits-field-reader type2 'field2))
+
+
+        (define type3 (fixed-record
+                       (list (fixed-record-super 'super2 type2)
+                             (fixed-record-field 'field3 uint8-little))))
+
+        (define make-type1-assoc (fixed-record-bits-assoc-constructor type1))
+        (define make-type2-assoc (fixed-record-bits-assoc-constructor type2))
+        (define make-type3-assoc (fixed-record-bits-assoc-constructor type3))
+
+        (define type3-field1 (fixed-record-bits-field-reader type3 'field1))
+        (define type3-field2 (fixed-record-bits-field-reader type3 'field2))
+        (define type3-field3 (fixed-record-bits-field-reader type3 'field3))
+
+        (define type3-super1 (fixed-record-bits-super-reader type3 'super1))
+        (define type3-super2 (fixed-record-bits-super-reader type3 'super2))
+
+        (define type3-write-super1 (fixed-record-bits-super-writer type3 'super1))
+        (define type3-write-super2 (fixed-record-bits-super-writer type3 'super2))
+
+        (define field1 1)
+        (define field2 2)
+        (define field3 3)
+
+        (define type3-instance
+          (make-type3-assoc
+           `((field1 . ,field1)
+             (field2 . ,field2)
+             (field3 . ,field3))))
+
+        (check-true (bits? type3-instance))
+
+        (check-equal? (type3-field1 type3-instance) field1)
+        (check-equal? (type3-field2 type3-instance) field2)
+        (check-equal? (type3-field3 type3-instance) field3)
+
+        (check-true (bits? (type3-super1 type3-instance)))
+
+        ;; Explicit coercion of type3 to type1
+        (check-equal? (type1-field1 (type3-super1 type3-instance)) field1)
+
+        ;; Implicit coercion of type3 to type1
+        (check-equal? (type1-field1 type3-instance) field1)
+
+
+        (check-true (bits? (type3-super2 type3-instance)))
+
+        ;; Explicit coercion of type3 to type2
+        (check-equal? (type2-field1 (type3-super2 type3-instance)) field1)
+        (check-equal? (type2-field2 (type3-super2 type3-instance)) field2)
+
+        ;; Implicit coercion of type3 to type2
+        (check-equal? (type2-field1 type3-instance) field1)
+        (check-equal? (type2-field2 type3-instance) field2))))
 
   (describe "fixed-size-type?"
     (it "is a predicate that recognizes fixed size types"

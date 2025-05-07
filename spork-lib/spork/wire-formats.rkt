@@ -91,12 +91,30 @@
 
   [fixed-record-bits-writer (-> fixed-record? (-> bits? natural-number/c bits? bits?))]
   [fixed-record-bits-reader (-> fixed-record? (-> bits? natural-number/c bits?))]
-  [fixed-record-bits-field-writer (-> fixed-record? symbol? (-> bits? any/c bits?))]
-  [fixed-record-bits-field-reader  (-> fixed-record? symbol? (-> bits? any/c))]
+
+  [fixed-record-bits-field-writer
+   (->i ([record-type fixed-record?]
+         [field-name (record-type) (field-name/c record-type)])
+        [writer (-> bits? any/c bits?)])]
+
+  [fixed-record-bits-field-reader
+   (->i ([record-type fixed-record?]
+         [field-name (record-type) (field-name/c record-type)])
+        [reader (-> bits? any/c)])]
+
+  [fixed-record-bits-super-writer
+   (->i ([record-type fixed-record?]
+         [field-name (record-type) (super-name/c record-type)])
+        [writer (-> bits? bits? bits?)])]
+
+  [fixed-record-bits-super-reader
+   (->i ([record-type fixed-record?]
+         [field-name (record-type) (super-name/c record-type)])
+        [reader (-> bits? bits?)])]
 
   ;; FIXME: The number of arguments should match the number of fields
   [fixed-record-bits-constructor (-> fixed-record? (->* () () #:rest (listof any/c) bits?))]
-  [fixed-record-bits-assoc-constructor (-> fixed-record? (->* () () #:rest (listof pair?) bits?))]
+  [fixed-record-bits-assoc-constructor (-> fixed-record? (-> (listof pair?) bits?))]
 
 
   [component-field-names (-> (listof fixed-record-component?) (listof symbol?))]
@@ -572,14 +590,28 @@ permissible length of the `fixed-string` type (~a).
   (define field-writers
     (make-immutable-hash
      (for/list ([field-name (fixed-record-field-names type)])
-       (cons field-name(fixed-record-bits-field-writer type field-name)))))
+       (cons field-name (fixed-record-bits-field-writer type field-name)))))
 
-  (define (bits-constructor . labeled-field-values)
+  (define (bits-constructor labeled-field-values)
     (for/fold ([bits (make-bits (fixed-size-in-bits type))])
         ([field-name/value labeled-field-values])
       (match-let ([(cons name value) field-name/value])
         ((hash-ref field-writers name) bits value))))
   bits-constructor)
+
+(define (fixed-record-bits-super-reader type super-name)
+  (match-let ([(cons super-type super-offset) (fixed-record-super-type-and-offset type super-name)])
+    (define super-reader (fixed-record-bits-reader super-type))
+    (define (reader bits)
+      (super-reader bits super-offset))
+    reader))
+
+(define (fixed-record-bits-super-writer type super-name)
+  (match-let ([(cons super-type super-offset) (fixed-record-super-type-and-offset type super-name)])
+    (define super-writer (fixed-record-bits-writer super-type))
+    (define (writer bits super-bits)
+      (super-writer bits super-offset super-bits))
+    writer))
 
 
 (define (fixed-record-bits-reader type)
@@ -588,7 +620,6 @@ permissible length of the `fixed-string` type (~a).
     (bits-get-slice bits (byte-spec nbits offset)))
   record-bits-reader)
 
-;; FIXME: I don't know if this is the right approach.
 (define (fixed-record-bits-writer type)
   (define nbits (fixed-size-in-bits type))
   (define (record-bits-writer bits offset record-bits)
@@ -599,9 +630,24 @@ permissible length of the `fixed-string` type (~a).
 (define (fixed-record-bits-field-reader type field-name)
   (match-let ([(cons field-type field-offset) (fixed-record-field-type-and-offset type field-name)])
     (define field-reader (bits-reader field-type))
+
     (define (field-bits-reader bits)
       (field-reader bits field-offset))
     field-bits-reader))
+
+(define (field-name/c record-type)
+  (make-flat-contract
+   #:name (build-compound-type-name 'field-name/c record-type)
+   #:first-order (λ (arg)
+                   (and (symbol? arg)
+                        (member arg (fixed-record-field-names record-type))))))
+
+(define (super-name/c record-type)
+  (make-flat-contract
+   #:name (build-compound-type-name 'super-name/c record-type)
+   #:first-order (λ (arg)
+                   (and (symbol? arg)
+                        (member arg (fixed-record-super-names record-type))))))
 
 (define (fixed-record-bits-field-writer type field-name)
   (match-let ([(cons field-type field-offset) (fixed-record-field-type-and-offset type field-name)])
@@ -615,6 +661,27 @@ permissible length of the `fixed-string` type (~a).
   (for/list ([component (fixed-record-components record)]
              #:when (fixed-record-super? component))
     component))
+
+(define (fixed-record-super/offset-list record)
+  (for/fold ([offset 0] [super/offset-list '()] #:result super/offset-list)
+      ([component (fixed-record-components record)])
+    (match component
+      [(fixed-record-field name field-type)
+       (values (+ offset (fixed-size-in-bits field-type))
+               super/offset-list)]
+      [(fixed-record-super name super-type)
+       (values (+ offset (fixed-size-in-bits super-type))
+               (append (map (match-lambda [(cons super super-offset) (cons super (+ offset super-offset))])
+                            (fixed-record-super/offset-list super-type))
+                       (cons (cons component offset) super/offset-list)))])))
+
+(define (fixed-record-super-type-and-offset record super-name)
+  (for/fold ([result #f])
+      ([super/offset (fixed-record-super/offset-list record)]
+       #:break result)
+    (match super/offset
+      [(cons (fixed-record-super name super-type) offset) #:when (eq? name super-name) (cons super-type offset)]
+      [_ #f])))
 
 
 (define (fixed-record-direct-super-count record)
@@ -649,6 +716,10 @@ permissible length of the `fixed-string` type (~a).
 
 (define (fixed-record-field-names record)
   (map fixed-record-field-name (fixed-record-fields record)))
+
+(define (fixed-record-super-names record-type)
+  (map (match-lambda [(fixed-record-super name _) name])
+       (fixed-record-supers record-type)))
 
 (define (fixed-record-field-type-and-offset record-type target-name)
   (for/fold ([field-type #f] [offset 0] #:result (cons field-type offset))
