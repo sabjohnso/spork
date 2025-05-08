@@ -1,14 +1,15 @@
 #lang racket
 
 (provide
- enum/wire)
+ enum/wire
+ integer/wire)
 
 (require
  (for-syntax racket racket/syntax syntax/parse)
  spork/wire-formats)
 
 ;;
-;; ... Enumerated Types
+;; ... enumerated types
 ;;
 
 (begin-for-syntax
@@ -87,3 +88,44 @@
            (hash-ref value->name/table arg))
 
          (define enumerated-names 'enumerated-names) ...)))]))
+
+
+;;
+;;  ... integer types
+;;
+
+(begin-for-syntax
+
+ (define-syntax-class endianness
+   #:attributes (value)
+   #:datum-literals (little big)
+   [pattern little
+     #:with value 'little]
+   [pattern big
+     #:with value 'big])
+
+ (define-splicing-syntax-class integer-options
+   [pattern
+        (~seq (~or (~optional (~seq #:signed? signedness:boolean))
+                   (~optional (~seq #:byte-count byte-count:nat))
+                   (~optional (~seq #:bits-per-byte bits-per-byte:nat))
+                   (~optional (~seq #:byte-order byte-order:endianness))
+                   (~optional (~seq #:bit-order bit-order:endianness)))
+              ...)]))
+
+(define-syntax (integer/wire stx)
+  (syntax-parse stx
+    [(_ name:id options:integer-options)
+     (with-syntax ([name? (format-id #'name "~a?" #'name)]
+                   [pred-hidden? (generate-temporary 'pred?)]
+                   [signedness (if (attribute options.signedness) #'options.signedness #f)]
+                   [byte-count (if (attribute options.byte-count) #'options.byte-count 4)]
+                   [bits-per-byte (if (attribute options.bits-per-byte) #'options.bits-per-byte 8)]
+                   [byte-order (if (attribute options.byte-order) #'options.byte-order 'little)]
+                   [bit-order (if (attribute options.bit-order) #'options.bit-order 'little)])
+      (syntax/loc stx
+        (begin
+          (define name (fixed-integer byte-count bits-per-byte signedness byte-order bit-order))
+          (define pred-hidden? (fixed-integer-predicate name))
+          (define (name? arg)
+            (pred-hidden? arg)))))]))

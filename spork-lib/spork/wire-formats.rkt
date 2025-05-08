@@ -54,6 +54,7 @@
   [nint512-little fixed-integer?]
   [fixed-integer-bits-reader (-> fixed-integer? (-> bits? natural-number/c exact-integer?))]
   [fixed-integer-bits-writer (-> fixed-integer? (-> bits? natural-number/c exact-integer? bits?))]
+  [fixed-integer-predicate (-> fixed-integer? predicate/c)]
 
   (struct fixed-string
     ([length exact-positive-integer?]
@@ -112,10 +113,15 @@
          [field-name (record-type) (super-name/c record-type)])
         [reader (-> bits? bits?)])]
 
-  ;; FIXME: The number of arguments should match the number of fields
-  [fixed-record-bits-constructor (-> fixed-record? (->* () () #:rest (listof any/c) bits?))]
-  [fixed-record-bits-assoc-constructor (-> fixed-record? (-> (listof pair?) bits?))]
+  [fixed-record-bits-constructor
+   (->i ([record-type  fixed-record?])
+        [constuructor (record-type)
+                      (->* () () #:rest (fixed-record-input-fields/c record-type) bits?)])]
 
+  [fixed-record-bits-assoc-constructor
+   (->i ([record-type fixed-record?])
+        [constructor (record-type)
+                     (-> (fixed-record-field-alist/c record-type) bits?)])]
 
   [component-field-names (-> (listof fixed-record-component?) (listof symbol?))]
   [fixed-record-component? predicate/c]
@@ -634,6 +640,29 @@ permissible length of the `fixed-string` type (~a).
     (define (field-bits-reader bits)
       (field-reader bits field-offset))
     field-bits-reader))
+
+(define (fixed-record-input-fields/c record-type)
+  (define field-count (fixed-record-field-count record-type))
+  (make-flat-contract
+   #:name (build-compound-type-name 'fixed-record-input-fields/c record-type)
+   #:first-order
+   (λ (rest-args)
+     (and (list? rest-args)
+          (= (length rest-args) field-count)))))
+
+(define (fixed-record-field-alist/c record-type)
+  (define field-names (list->set (fixed-record-field-names record-type)))
+  (make-flat-contract
+   #:name (build-compound-type-name 'fixed-record-field-alist/c record-type)
+   #:first-order
+   (λ (arg-alist)
+     (and (list? arg-alist)
+          (<= (length arg-alist) (set-count field-names))
+          (for/and ([element arg-alist])
+            (match element
+              [(cons name _) #:when (set-member? field-names name) #t]
+              [_ #f]))
+          (unique-names? (map car arg-alist))))))
 
 (define (field-name/c record-type)
   (make-flat-contract

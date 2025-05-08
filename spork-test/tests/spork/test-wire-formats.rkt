@@ -375,7 +375,19 @@
         (define x   11)
         (define y   12)
         (define id 127)
+        (describe "fixed-record-bits-constructor"
+
+          (it "builds a function that constructs bits from values for the fields of the record"
+            (check-true (bits? (make-point 3 4 5))))
+
+          (it "does not accept excess arguments"
+            (check-exn exn:fail? (thunk (make-point 3 4 5 6))))
+
+          (it "does not accept insufficient arguments"
+            (check-exn exn:fail? (thunk (make-point 3 4)))))
+
         (describe "fixed-record-bits-assoc-constructor"
+
           (it "builds a function that constructs bits from an alist with the field names as keys"
             (check-true (bits? (make-point-assoc '((x . 3) (y . 4) (id . 5)))))
             (check-equal? (point-x  (make-point-assoc '())) 0)
@@ -392,7 +404,14 @@
             (check-true (bits? (make-point-assoc '())))
             (check-equal? (point-x  (make-point-assoc '())) 0)
             (check-equal? (point-y  (make-point-assoc '())) 0)
-            (check-equal? (point-id (make-point-assoc '())) 0)))
+            (check-equal? (point-id (make-point-assoc '())) 0))
+
+          (it "does not accept an alist with names that are not field names"
+            (check-exn exn:fail? (thunk (make-point-assoc '((bad-name . 8))))))
+
+          (it "does not accept an alist with repeated names"
+            (check-exn exn:fail? (thunk (make-point-assoc '((x . 3) (x . 4)))))))
+
         (check-true (procedure? make-point))
         (define point (make-point x y id))
 
