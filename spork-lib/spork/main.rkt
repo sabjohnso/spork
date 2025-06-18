@@ -8,6 +8,7 @@
   spork/curried
   spork/either
   spork/env
+  spork/enum
   spork/expect
   spork/functor
   spork/infix-notation
@@ -27,6 +28,7 @@
   spork/curried
   spork/either
   spork/env
+  spork/enum
   spork/expect
   spork/functor
   spork/infix-notation
