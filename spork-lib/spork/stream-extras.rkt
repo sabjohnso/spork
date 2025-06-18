@@ -22,7 +22,10 @@
   [stream-join-function (-> (stream/c stream?) stream?)]
   [nonempty-stream? predicate/c]
   [nonempty-stream-duplicate-function (-> nonempty-stream? (and/c nonempty-stream? (stream/c nonempty-stream?)))]
-  [nonempty-stream-extend-function (-> (-> nonempty-stream? any/c) nonempty-stream? nonempty-stream?)]))
+  [nonempty-stream-extend-function (-> (-> nonempty-stream? any/c) nonempty-stream? nonempty-stream?)]
+  [stream-take-upto (-> stream? natural-number/c stream?)]
+  [stream-drop-upto (-> stream? natural-number/c stream?)]
+  [stream-window-upto (-> stream? natural-number/c stream?)]))
 
 (require (for-syntax racket racket/syntax syntax/parse))
 
@@ -160,3 +163,19 @@
      (syntax/loc stx
        (stream-lazy
         (stream-window-function xs n)))]))
+
+(define (stream-take-upto xs n)
+  (if (or (<= n 0) (stream-empty? xs)) empty-stream
+    (stream-cons (stream-first xs)
+                 (stream-take-upto  (stream-rest xs) (sub1 n)))))
+
+(define (stream-drop-upto xs n)
+  (if (or  (<= n 0) (stream-empty? xs)) xs
+      (stream-lazy
+       (stream-drop-upto (stream-rest xs) (sub1 n)))))
+
+
+(define (stream-window-upto xs n)
+  (stream-cons
+   (stream-take-upto xs n)
+   (stream-window-function (stream-drop-upto xs n) n)))

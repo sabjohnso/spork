@@ -112,8 +112,33 @@
        '(0 1 2 3))))
 
   (describe "stream-iterate"
-    (it "is makes a stream by iterating with a function over the intial value"
+    (it "makes a stream by iterating with a function over the intial value"
       (define xs (stream-iterate add1 0))
       (check-equal?
        (stream->list (stream-take xs 4))
-       '(0 1 2 3)))))
+       '(0 1 2 3))))
+
+  (describe "steam-take-upto"
+    (it "takes  the specified number of elements from the front of a stream"
+      (define xs (stream 1 2 3 4))
+      (check-equal?
+       (stream->list (stream-take-upto xs 2))
+       '(1 2)))
+
+    (it "returns the input stream if the specified number of elements is greater than or equal to the length"
+      (define xs (stream 1 2 3 4))
+      (check-equal?
+       (stream->list (stream-take-upto xs 100))
+       '(1 2 3 4))))
+
+
+  (describe "stream-drop-upto"
+    (it "removes the specified number of elements from the front of a stream if the stream is long enough"
+      (define xs (stream 1 2 3 4))
+      (check-equal?
+       (stream->list (stream-drop-upto xs 2))
+       '(3 4)))
+    (it "returns an empty stream if the specified number of elements is greater than or equal to the length"
+      (define xs (stream 1 2 3 4))
+      (check-true
+       (stream-empty? (stream-drop-upto xs 8))))))
