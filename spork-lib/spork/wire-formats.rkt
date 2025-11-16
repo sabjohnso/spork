@@ -1,4 +1,4 @@
-#lang racket
+#lang errortrace racket
 
 (provide
  (contract-out
@@ -6,6 +6,8 @@
   [endian? predicate/c]
   [big endian?]
   [little endian?]
+
+  (struct fixed-size-placeholder ())
 
   (struct fixed-integer
     ([size natural-number/c]
@@ -67,6 +69,25 @@
   (struct fixed-array
     ([element-type fixed-size-type?]
      [length natural-number/c]))
+  [fixed-array-predicate (-> fixed-array? predicate/c)]
+  [fixed-array-bits-constructor
+   (->i ([array-type fixed-array?])
+        [constructor (array-type) (fixed-array-constructor/c array-type)])]
+  [fixed-array-element-reader
+   (->i ([array-type fixed-array?])
+       [element-reader (array-type)
+          (-> (fixed-array-bits/c array-type)
+              (fixed-array-index/c array-type)
+              (fixed-array-element/c array-type))])]
+  [fixed-array-element-writer
+   (->i ([array-type fixed-array?])
+        [element-writer (array-type)
+           (-> (fixed-array-bits/c array-type)
+               (fixed-array-index/c array-type)
+               (fixed-array-element/c array-type)
+               (fixed-array-bits/c array-type))])]
+
+
 
   (struct fixed-tuple
     ([components (listof (or/c fixed-size-type? fixed-tuple-super?))]))
@@ -90,6 +111,7 @@
     ([name symbol?]
      [type fixed-record?]))
 
+  [fixed-record-predicate (-> fixed-record? predicate/c)]
   [fixed-record-bits-writer (-> fixed-record? (-> bits? natural-number/c bits? bits?))]
   [fixed-record-bits-reader (-> fixed-record? (-> bits? natural-number/c bits?))]
 
@@ -151,15 +173,25 @@
   (match type
     [(? fixed-integer?) (fixed-integer-bits-reader type)]
     [(? fixed-string?)  (fixed-string-bits-reader  type)]
+    [(? fixed-array?)   (fixed-array-bits-reader   type)]
     [(? fixed-record?)  (fixed-record-bits-reader  type)]))
 
 (define (bits-writer type)
   (match type
     [(? fixed-integer?) (fixed-integer-bits-writer type)]
     [(? fixed-string?)  (fixed-string-bits-writer  type)]
+    [(? fixed-array?)   (fixed-array-bits-writer   type)]
     [(? fixed-record?)  (fixed-record-bits-writer  type)]))
 
 (define bits-per-octet 8)
+
+
+;;
+;; ... A place holder for fixed types for use only during compile-time
+;;     evaluation of field and super names for deriving function names.
+;;
+(struct fixed-size-placeholder
+  ())
 
 
 (define endian
@@ -191,8 +223,8 @@
 
 (define (fixed-integer-max-value type)
   (match-let ([(fixed-integer size unit signed? _ _) type])
-    (if signed? (expt 2 (sub1 (* size unit)))
-      (expt 2 (* size unit)))))
+    (if signed? (sub1 (expt 2 (sub1 (* size unit))))
+      (sub1 (expt 2 (* size unit))))))
 
 
 (define (fixed-integer-predicate type)
@@ -503,6 +535,94 @@ permissible length of the `fixed-string` type (~a).
   (element-type length)
   #:transparent)
 
+(define (fixed-array-bits-reader array-type)
+  (define nbits (fixed-size-in-bits array-type))
+  (define (reader bits offset)
+    (bits-get-slice bits (byte-spec nbits offset)))
+  reader)
+
+(define (fixed-array-bits-writer array-type)
+  (define nbits (fixed-size-in-bits array-type))
+  (define (writer bits offset array-bits)
+    (bits-set-slice bits offset array-bits))
+  writer)
+
+(define (fixed-array-element-reader array-type)
+  (match-let ([(fixed-array element-type extent) array-type])
+    (define nbits/element (fixed-size-in-bits element-type))
+    (define reader/element (bits-reader element-type))
+    (define (array-element-reader bits index)
+      (reader/element bits (* index nbits/element)))
+    array-element-reader))
+
+(define (fixed-array-element-writer array-type)
+  (match-let ([(fixed-array element-type length) array-type])
+    (define element-size-in-bits (fixed-size-in-bits element-type))
+    (define writer/element-type (bits-writer element-type))
+
+    (define (element-writer array-bits index input)
+      (writer/element-type
+       array-bits
+       (* index element-size-in-bits) input))
+    element-writer))
+
+(define (fixed-array-predicate array-type)
+  (match-let ([(fixed-array element-type length) array-type])
+    (define total-size-in-bits (* length (fixed-size-in-bits element-type)))
+    (define (pred? arg)
+      (and (bits? arg)
+           (= (bits-size arg) total-size-in-bits)))
+    pred?))
+
+(define (fixed-array-bits-constructor array-type)
+  (match-let ([(fixed-array element-type extent) array-type])
+    (define total-size-in-bits (fixed-size-in-bits array-type))
+    (define element-writer (fixed-array-element-writer array-type))
+    (define (constructor . args)
+      (for/fold ([bits (make-bits total-size-in-bits)])
+          ([arg args]
+           [index (in-range extent)])
+        (element-writer bits index arg)))
+    constructor))
+
+
+(define (fixed-array-bits/c array-type)
+  (define nbits (fixed-size-in-bits array-type))
+  (make-flat-contract
+   #:name (build-compound-type-name 'fixed-array-bits/c array-type)
+   #:first-order
+   (λ (arg)
+     (and (bits? arg)
+          (>= (bits-size arg) nbits)))))
+
+(define (fixed-array-index/c array-type)
+  (let ([n (fixed-array-length array-type)])
+    (make-flat-contract
+     #:name (build-compound-type-name #'fixed-array-index/c array-type)
+     #:first-order
+     (λ (arg)
+       (and (exact-nonnegative-integer? arg)
+            (< arg n))))))
+
+;; FIXME: This contract is too weak
+(define (fixed-array-constructor-input/c array-type)
+  (define extent (fixed-array-length array-type))
+  (make-flat-contract
+   #:name (build-compound-type-name 'fixed-array-constructor-input/c)
+   #:first-order
+   (λ (arg)
+     (and (list? arg)
+          (<= (length arg) extent)))))
+
+(define (fixed-array-constructor/c array-type)
+  (->* () () #:rest (fixed-array-constructor-input/c array-type) bits?))
+
+;; FIXME: This is not implemented
+(define (fixed-array-element/c array-type)
+  (make-flat-contract
+   #:name (build-compound-type-name 'fixed-array-element/c array-type)
+   #:first-order (λ (arg) #t)))
+
 
 ;;
 ;; ... Fixed Tuple of Fixed Size Types
@@ -576,6 +696,13 @@ permissible length of the `fixed-string` type (~a).
   (name type)
   #:transparent)
 
+(define (fixed-record-predicate record-type)
+  (define nbits (fixed-size-in-bits record-type))
+  (define (predicate arg)
+    (and (bits? arg)
+         (= (bits-size arg) nbits)))
+  predicate)
+
 
 (define (fixed-record-component? arg)
   (or (fixed-record-field? arg)
@@ -636,7 +763,6 @@ permissible length of the `fixed-string` type (~a).
 (define (fixed-record-bits-field-reader type field-name)
   (match-let ([(cons field-type field-offset) (fixed-record-field-type-and-offset type field-name)])
     (define field-reader (bits-reader field-type))
-
     (define (field-bits-reader bits)
       (field-reader bits field-offset))
     field-bits-reader))
@@ -665,11 +791,12 @@ permissible length of the `fixed-string` type (~a).
           (unique-names? (map car arg-alist))))))
 
 (define (field-name/c record-type)
+  (define field-names (list->set (fixed-record-field-names record-type)))
   (make-flat-contract
    #:name (build-compound-type-name 'field-name/c record-type)
    #:first-order (λ (arg)
                    (and (symbol? arg)
-                        (member arg (fixed-record-field-names record-type))))))
+                        (set-member? field-names arg)))))
 
 (define (super-name/c record-type)
   (make-flat-contract
@@ -864,7 +991,8 @@ permissible length of the `fixed-string` type (~a).
          (? fixed-tuple?)
          (? fixed-record?)
          (? fixed-string?)
-         (? enum-type?))
+         (? enum-type?)
+         (? fixed-size-placeholder?))
      #t]
     [_ #f]))
 

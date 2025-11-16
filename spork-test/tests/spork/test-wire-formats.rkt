@@ -1,4 +1,4 @@
-#lang racket
+#lang errortrace racket
 
 (module+ test
   (require spork/wire-formats spork/bits rackunit rackunit/spec)
@@ -203,31 +203,55 @@
 
 
 
-  (describe "fixed-array"
-    (it "constructs a fixed array type"
-      (define uint16 (fixed-integer 16 1 #f 'little 'little))
-      (define len 3)
-      (define uint16x3 (fixed-array uint16 len))
-      (check-true (fixed-array? uint16x3))
+  (describe "fixed array types"
+    (describe "fixed-array"
+      (it "constructs a fixed array type"
+        (define uint16 (fixed-integer 16 1 #f 'little 'little))
+        (define len 3)
+        (define uint16x3 (fixed-array uint16 len))
+        (check-true (fixed-array? uint16x3))
 
-      (it "constructs a fixed-size-type?"
-        (check-true (fixed-size-type? uint16x3)))
+        (it "constructs a fixed-size-type?"
+          (check-true (fixed-size-type? uint16x3)))
 
-      (it "accepts a fixed-size-type? as the first argument for the element-type"
-        (check-true (fixed-size-type? uint16))
-        (check-equal? (fixed-array-element-type uint16x3) uint16))
+        (it "accepts a fixed-size-type? as the first argument for the element-type"
+          (check-true (fixed-size-type? uint16))
+          (check-equal? (fixed-array-element-type uint16x3) uint16))
 
-      (it "only accepts a fixed-size-type? as the first argument for the element-type"
-        (check-exn exn:fail? (thunk (fixed-array 'bad-element-type len))))
+        (it "only accepts a fixed-size-type? as the first argument for the element-type"
+          (check-exn exn:fail? (thunk (fixed-array 'bad-element-type len))))
 
-      (it "accepts a natural-number as the second argument, specifying the length of the fixed array"
-        (check-equal? (fixed-array-length uint16x3) len))
+        (it "accepts a natural-number as the second argument, specifying the length of the fixed array"
+          (check-equal? (fixed-array-length uint16x3) len))
 
-      (it "only accepts natural numbers for specifying the number of elements"
-        (check-exn exn:fail? (thunk (fixed-array uint16 -1))))
+        (it "only accepts natural numbers for specifying the number of elements"
+          (check-exn exn:fail? (thunk (fixed-array uint16 -1))))
 
-      (it "does accept 0 for the number of elements"
-        (check-true (fixed-array? (fixed-array uint16 0))))))
+        (it "does accept 0 for the number of elements"
+          (check-true (fixed-array? (fixed-array uint16 0))))))
+    (describe "fixed constructor"
+      (context "with a fixed array type"
+        (define point-type (fixed-array int16-little 3))
+        (define make-point (fixed-array-bits-constructor point-type))
+        (define point-coord (fixed-array-element-reader point-type))
+        (define x 12)
+        (define y 345)
+        (define z 6789)
+        (describe "fixed-array-bits-constructor"
+          (it "builds a function that constructs bits from values for the elements of the array"
+            (check-true (bits? (make-point x y z))))
+          (it "accepts insufficient arguments"
+            (check-true (bits? (make-point x y))))
+          (it "does not accept excess arguments"
+            (check-exn exn:fail? (thunk (make-point x y z 0)))))
+        (describe "fixed-array-element-reader"
+          (it "builds a function that reads elements of an array"
+            (define point (make-point x y z))
+            (check-equal? (point-coord point 0) x)
+            (check-equal? (point-coord point 1) y)
+            (check-equal? (point-coord point 2) z))
+          (it "does not accept an index that is out of bounds"
+            (check-exn exn:fail? (thunk (point-coord (make-point x y z) 3))))))))
 
   (describe "fixed-tuple"
     (it "constructs a fixed-tuple? from a list of fixed-size-type? and fixed-tuple-super? elements"

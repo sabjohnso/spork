@@ -1,12 +1,14 @@
-#lang racket
+#lang errortrace racket
 
 (provide
  enum/wire
- integer/wire)
+ integer/wire
+ array/wire
+ struct/wire)
 
 (require
- (for-syntax racket racket/syntax syntax/parse)
- spork/wire-formats)
+ (for-syntax spork/wire-formats spork/list-extras racket racket/syntax syntax/parse )
+ spork/wire-formats )
 
 ;;
 ;; ... enumerated types
@@ -106,26 +108,255 @@
 
  (define-splicing-syntax-class integer-options
    [pattern
-        (~seq (~or (~optional (~seq #:signed? signedness:boolean))
-                   (~optional (~seq #:byte-count byte-count:nat))
-                   (~optional (~seq #:bits-per-byte bits-per-byte:nat))
-                   (~optional (~seq #:byte-order byte-order:endianness))
-                   (~optional (~seq #:bit-order bit-order:endianness)))
+       (~seq (~or (~optional (~seq #:signed? signedness:boolean)
+                             #:defaults ([signedness #'#f])
+                             #:name "#:signed keyword and value")
+                   (~optional (~seq #:byte-count byte-count:nat)
+                              #:defaults ([byte-count #'4])
+                              #:name "#:byte-count keyword and value")
+                   (~optional (~seq #:bits-per-byte bits-per-byte:nat)
+                              #:defaults ([bits-per-byte #'8])
+                              #:name "#:bits-per-byte keyword and value")
+                   (~optional (~seq #:byte-order byte-order:endianness)
+                              #:defaults ([byte-order #'little])
+                              #:name "#:byte-order keyword and endian value")
+                   (~optional (~seq #:bit-order bit-order:endianness)
+                              #:defaults ([bit-order #'little])
+                              #:name "#:bit-order keyword and endian value"))
               ...)]))
 
 (define-syntax (integer/wire stx)
   (syntax-parse stx
     [(_ name:id options:integer-options)
      (with-syntax ([name? (format-id #'name "~a?" #'name)]
-                   [pred-hidden? (generate-temporary 'pred?)]
-                   [signedness (if (attribute options.signedness) #'options.signedness #f)]
-                   [byte-count (if (attribute options.byte-count) #'options.byte-count 4)]
-                   [bits-per-byte (if (attribute options.bits-per-byte) #'options.bits-per-byte 8)]
-                   [byte-order (if (attribute options.byte-order) #'options.byte-order 'little)]
-                   [bit-order (if (attribute options.bit-order) #'options.bit-order 'little)])
+                   [pred-hidden? (generate-temporary 'pred?)])
       (syntax/loc stx
         (begin
-          (define name (fixed-integer byte-count bits-per-byte signedness byte-order bit-order))
-          (define pred-hidden? (fixed-integer-predicate name))
+                    (define name
+            (fixed-integer
+                  options.byte-count
+                  options.bits-per-byte
+                  options.signedness
+                  options.byte-order
+                  options.bit-order))
+          #;
+          (define-syntax (name s)
+            (syntax-parse s
+              [(_)
+               (syntax/loc s
+                 (fixed-integer
+                  options.byte-count
+                  options.bits-per-byte
+                  options.signedness
+                  options.byte-order
+                  options.bit-order))]
+              [_
+               (syntax/loc s
+                 (fixed-integer
+                  options.byte-count
+                  options.bits-per-byte
+                  options.signedness
+                  options.byte-order
+                  options.bit-order))]))
+
+          (define pred-hidden?
+            (fixed-integer-predicate name))
+
           (define (name? arg)
             (pred-hidden? arg)))))]))
+
+
+(begin-for-syntax
+ (define (make-fixed-array-identifiers name)
+   (list
+    (format-id name "~a?" name)
+    (format-id name "make-~a" name)
+    (format-id name "~a-ref" name)
+    (format-id name "~a-set" name)
+    (format-id name "list->~a" name)
+    (format-id name "~a->list" name))))
+
+
+
+
+(define-syntax (array/wire stx)
+  (syntax-parse stx
+    [(_ name:id element-type:id element-count:nat)
+     (with-syntax ([(name? make-name name-ref name-set list->name name->list)
+                    (make-fixed-array-identifiers #'name)]
+                   [(hidden-element-writer  hidden-element-reader  hidden-pred?  hidden-constructor s)
+                    (generate-temporaries '(hidden-element-writer  hidden-element-reader  hidden-pred?  hidden-constructor s))])
+       (syntax/loc stx
+         (begin
+           (define name (fixed-array element-type element-count))
+           #;
+           (define-syntax (name s)
+             (syntax-parse s
+               [(name) #'name]
+               [_ (syntax/loc s
+                    (fixed-array element-type element-count))]))
+
+           ;; Hidden functions
+           (define hidden-constructor (fixed-array-bits-constructor name))
+           (define hidden-pred? (fixed-array-predicate name))
+           (define hidden-element-writer (fixed-array-element-writer name))
+           (define hidden-element-reader (fixed-array-element-reader name))
+
+           ;; Visible functions
+           (define (make-name . args)
+             (apply hidden-constructor args))
+
+           (define (name? arg)
+             (hidden-pred? arg))
+
+           (define (name-ref array-bits index)
+             (hidden-element-reader array-bits index))
+
+           (define (name-set array-bits index input)
+             (hidden-element-writer array-bits index input))
+
+           (define (list->name list)
+             (apply hidden-constructor list))
+
+           (define (name->list array-bits)
+             (for/list ([index (in-range (fixed-array-length name))])
+               (name-ref array-bits index))))))]))
+
+
+;;
+;; ... Record Types
+;;
+
+(begin-for-syntax
+ ;; The record component may be either fields
+ ;; or supers, where they are discriminated by
+ ;; the presence keyword `#:super` for supers.
+
+ (define-syntax-class  record-component
+   #:attributes (name type super?)
+   #:datum-literals (:)
+
+   [pattern (name:id : type)
+     #:declare type (expr/c #'fixed-size-type?)
+     #:with super? #f]
+
+   [pattern (name:id : type #:splice)
+     #:declare type (expr/c #'fixed-record?)
+     #:with super? #t])
+
+ ;; Transform the input syntax into the fixed-record form.
+ ;; (-> syntax? syntax?)
+ (define (make-fixed-record-type-syntax stx)
+   (syntax-parse stx
+     [(_ _ (components:expr ...))
+      (with-syntax ([(components ...) (transform-record-components #'(components ...))])
+        (syntax/loc stx
+          (fixed-record
+           (list components ...))))]))
+
+
+ ;; Transform each component of the input syntax into
+ ;; fixed record component syntax
+ ;; (-> (listof syntax?) (listof syntax?))
+ (define (transform-record-components components)
+   (map transform-record-component (syntax-e components)))
+
+
+ (define (transform-record-component component)
+   (syntax-parse component
+     #:datum-literals (:)
+     [(field-name : field-type)
+      (syntax/loc component
+        (fixed-record-field 'field-name field-type))]
+
+     [(super-name : super-type #:splice)
+      (syntax/loc component
+        (fixed-record-super 'super-name super-type))]))
+
+ (define (fixed-record-syntax? arg)
+   (and (syntax? arg)
+        (syntax-parse arg
+          #:literals (fixed-record list)
+          [(fixed-recrod (list components:expr ...)) #t]
+          [_ #f])))
+
+ (define (extract-field-names components)
+   (let loop ([components (syntax-e components)]
+              [accum '()])
+     (if (null? components) (reverse accum)
+       (let ([component (car components)])
+         (syntax-parse component
+           #:datum-literals (:)
+           #:literals (quote)
+           [(introducer:id (quote name:id) type:id)
+            (match (syntax->datum #'introducer)
+              ['fixed-record-field (loop (cdr components) (cons #'name accum))]
+              ['fixed-record-super
+               (define super-type (local-expand #'type 'top-level '()))
+               (syntax-parse super-type
+                 [(fixed-record (list super-components ...))
+                  (loop (cdr components)
+                         (rappend
+                          (extract-field-names #'(super-components ...))
+                          accum))]
+                 [super-name:id
+                  (raise-syntax-error
+                   'no-binding
+                   (format
+                       "could not find a binding for super type: ~a"
+                     (syntax->datum #'super-name)))])])]))))))
+
+
+(define-syntax (struct/wire stx)
+  (syntax-parse stx
+    [(_ name:id
+        (component:record-component ...))
+     (with-syntax* ([(record-component ...) (transform-record-components #'(component ...))]
+                    [constructor (format-id #'name "make-~a" #'name)]
+                    [name? (format-id #'name "~a?" #'name)]
+                    [(field-name ...) (extract-field-names #'(record-component ...))]
+                    [(field-reader ...)
+                     (map (λ (field-name) (format-id field-name "~a-~a" #'name field-name))
+                          (syntax-e #'(field-name ...)))]
+                    [(field-writer ...)
+                     (map (λ (field-name) (format-id field-name "set-~a-~a" #'name field-name))
+                          (syntax-e #'(field-name ...)))]
+                    [(hidden-field-reader ...)
+                     (generate-temporaries #'(field-name ...))]
+                    [(hidden-field-writer ...)
+                     (generate-temporaries #'(field-name ...))]
+                    [(hidden-constructor hidden-predicate arg)
+                     (generate-temporaries
+                      '(hidden-constructor hidden-predicate arg))])
+       (displayln "-----------------------------")
+       (displayln #'(record-component ...))
+       (displayln #'(field-name ...))
+       (syntax/loc stx
+         (begin
+
+           (define name
+             (fixed-record (list record-component ...)))
+           #;
+           (define-syntax (name s)
+             (syntax-parse s
+               [_ (fixed-record
+                   (list record-component ...))]))
+
+           (define hidden-predicate (fixed-record-predicate name))
+
+           (define (name? arg)
+             (hidden-predicate arg))
+
+           (define hidden-constructor (fixed-record-bits-assoc-constructor name))
+           (define (constructor field-name ...)
+             (hidden-constructor
+              (list (cons 'field-name field-name) ...)))
+
+
+           (define hidden-field-reader (fixed-record-bits-field-reader name 'field-name)) ...
+
+           (define (field-reader name) (hidden-field-reader name)) ...
+
+           (define hidden-field-writer (fixed-record-bits-field-writer name 'field-name)) ...
+
+           (define (field-writer name) (hidden-field-writer name)) ...)))]))
