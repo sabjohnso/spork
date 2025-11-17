@@ -88,7 +88,7 @@
     (context "with a define deque"
       (define deque (make-deque))
       (it "is robust against multiple consumers and producers"
-        (let ([n 100]
+        (let ([n 1000]
               [sum (box 0)])
           (for/async ([i (in-range n)])
             (if (even? i) (deque-push-front! deque i)
@@ -98,6 +98,7 @@
                          (if (even? i) (deque-pop-back! deque)
                            (deque-pop-front! deque)) ])
               (let loop ([sum* (unbox sum)])
-                (box-cas! sum sum* (+ sum* value)))))
+                (when (not (box-cas! sum sum* (+ sum* value)))
+                  (loop (unbox sum))))))
           (check-true (deque-empty? deque))
           (check-equal? (unbox sum) (/ (* n (sub1 n)) 2)))))))
