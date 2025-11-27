@@ -67,6 +67,7 @@
  spork/sequence-extras
  spork/thunk-extras
  spork/future-extras
+ spork/promise-extras
  spork/pair-extras
  spork/either
  spork/curried
@@ -97,7 +98,10 @@
     (define (unwrap-proc thunk) thunk-unwrap)]
    [future?
     (define (wrap-proc future) future-wrap)
-    (define (unwrap-proc future) future-unwrap)]))
+    (define (unwrap-proc future) future-unwrap)]
+   [promise?
+    (define (wrap-proc promise) promise-wrap)
+    (define (unwrap-proc promise) promise-unwrap)]))
 
 ;; wrap
 ;; ----
