@@ -19,7 +19,8 @@
   [function-fanin        (-> (-> any/c any/c) (-> any/c any/c) (-> either? any/c))]
   [function-ask function?]
   [function-select (-> (-> any/c any/c) function?)]
-  [function-local (-> (-> any/c any/c) function? function?)]))
+  [function-local (-> (-> any/c any/c) function? function?)]
+  [function-contramap (-> function? function? function?)]))
 
 (require spork/either)
 
@@ -85,3 +86,6 @@
     (match mx
       [(left x)  (f x)]
       [(right y) (g y)])))
+
+(define (function-contramap f g)
+  (compose g f))
