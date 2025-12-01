@@ -1,7 +1,7 @@
 #lang racket
 
 (module+ test
-  (require spork rackunit rackunit/spec)
+  (require spork spork/env rackunit rackunit/spec)
 
   (describe "env"
     (it "is a struct type for computing with an environment"
@@ -29,4 +29,16 @@
       (check-true (applicative? (env-return 'x))))
 
     (it "is a functor"
-      (check-true (functor? (env-return 'x))))))
+      (check-true (functor? (env-return 'x)))))
+
+
+  (describe "struct/env"
+    (it "can define a structure type with predefined environment selectors"
+      (struct/env example (field1 field2))
+
+      (check-equal?
+       (env-run (example 3 4)
+                (let/monad ([x example-field1/env]
+                            [y example-field2/env])
+                  (return (+ x y))))
+       7))))

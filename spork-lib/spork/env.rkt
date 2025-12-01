@@ -1,6 +1,7 @@
 #lang racket
 
 (provide
+ struct/env
  (contract-out
   (struct env ([proc (-> any/c any/c)]))
   [env-run (-> any/c env? any/c)]
@@ -9,7 +10,10 @@
   [env-select (-> (-> any/c any/c) env?)]
   [env-local (-> (-> any/c any/c) env? env?)]))
 
-(require spork/functor)
+(require
+ spork/functor
+ spork/struct-extras
+ (for-syntax racket/syntax syntax/parse))
 
 (struct env
   (proc)
@@ -34,3 +38,28 @@
 
 (define (env-local f mx)
   (env (λ (e) (env-run (f e) mx))))
+
+
+(begin-for-syntax
+ (define (make-field-env-accessors struct-name/stx field-names/stx)
+   (for/list ([field-name/stx (syntax-e field-names/stx)])
+     (make-field-env-accessor struct-name/stx field-name/stx)))
+
+ (define (make-field-env-accessor struct-name/stx field-name/stx)
+   (with-syntax ([accessor (format-id field-name/stx "~a-~a" struct-name/stx field-name/stx)]
+                 [accessor/env (format-id field-name/stx "~a-~a/env" struct-name/stx field-name/stx)])
+     (syntax/loc #'accessor
+       (define accessor/env (env-select accessor))))))
+
+(define-syntax (struct/env stx)
+  (syntax-parse stx
+    [(_ struct-name:id (fields:field-decl ...)
+        options:struct-options)
+     (with-syntax ([(env-accessor-defs ...) (make-field-env-accessors #'struct-name #'(fields.field-name ...))]
+                   [(options ...) #'options])
+       (syntax/loc stx
+         (begin
+           (struct struct-name
+             (fields ...)
+             options ...)
+           env-accessor-defs ...)) )]))

@@ -72,4 +72,34 @@
       (it "modifies the state with the input function"
         (check-equal?
          (stateful-run 's (stateful-modify symbol->string))
-         (cons undefined-value "s"))))))
+         (cons undefined-value "s")))))
+
+  (describe "struct/stateful"
+    (it "it defines struct types with additional definitions for reading and writing state"
+      (context "with a type defined using struct/stateful"
+        (struct/stateful example
+          (field1 field2)
+          #:transparent)
+        (define a 0)
+        (define b 1)
+        (define c 2)
+        (define d 3)
+        (define s (example a b))
+
+        (it "has getters to read from state"
+          (check-equal?
+           (stateful-eval s example-field1/stateful)
+           (example-field1 s))
+
+          (check-equal?
+           (stateful-eval s example-field2/stateful)
+           (example-field2 s)))
+
+        (it "has setters to modify the state"
+          (check-equal?
+           (stateful-eval s
+             (begin/monad
+              (set-example-field1/stateful c)
+              (set-example-field2/stateful d)
+              stateful-get))
+           (example c d)))))))
