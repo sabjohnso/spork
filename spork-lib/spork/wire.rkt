@@ -328,21 +328,14 @@
                     [(hidden-constructor hidden-predicate arg)
                      (generate-temporaries
                       '(hidden-constructor hidden-predicate arg))])
-       (displayln "-----------------------------")
-       (displayln #'(record-component ...))
-       (displayln #'(field-name ...))
        (syntax/loc stx
          (begin
 
            (define name
              (fixed-record (list record-component ...)))
-           #;
-           (define-syntax (name s)
-             (syntax-parse s
-               [_ (fixed-record
-                   (list record-component ...))]))
 
-           (define hidden-predicate (fixed-record-predicate name))
+           (define hidden-predicate
+             (fixed-record-predicate name))
 
            (define (name? arg)
              (hidden-predicate arg))

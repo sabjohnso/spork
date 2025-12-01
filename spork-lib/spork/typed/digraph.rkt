@@ -54,6 +54,9 @@
  digraph-partitions)
 
 (require (prefix-in list: spork/typed/list-extras))
+(require/typed racket/hash-code
+               [hash-code-combine (->* () () #:rest Integer Integer)])
+
 
 (define-type Node Natural)
 (define-predicate digraph-node? Node)
@@ -411,3 +414,28 @@
       (let ([partition (digraph-weakly-connected dg (digraph-first-node dg))])
         (loop (digraph-difference dg partition)
               (cons (digraph-intersect dg partition) accum))))))
+
+
+(: subdigraph-equal-proc (-> Subdigraph Subdigraph (-> Any Any Boolean) Boolean))
+(define (subdigraph-equal-proc sub1 sub2 rec)
+  (match-let ([(subdigraph sub1 parent1) sub1]
+              [(subdigraph sub2 parent2) sub2])
+    (and (rec sub1 sub2)
+         (rec parent1 parent2))))
+
+
+(: subdigraph-hash-proc (-> Subdigraph (-> Any Integer) Integer))
+(define (subdigraph-hash-proc sub rec)
+  (match-let ([(subdigraph sub parent) sub])
+    (hash-code-combine (rec sub) (rec parent))))
+
+
+(struct subdigraph
+  ([sub : Digraph]
+   [parent : Digraph])
+  #:type-name Subdigraph
+  #:property prop:equal+hash
+  (list
+   subdigraph-equal-proc
+   subdigraph-hash-proc
+   subdigraph-hash-proc))

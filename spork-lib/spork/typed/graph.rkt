@@ -10,7 +10,8 @@
   digraph->graph
   graph->digraph
   empty-graph
-  (struct-out edge)
+  edge
+  edge?
 
 
   graph-add-node
@@ -125,6 +126,11 @@
   (list edge-equal-proc
         edge-hash-proc
         edge-hash-proc))
+
+(: edge-nodes (-> Edge (Setof Node)))
+(define (edge-nodes e)
+  (match-let ([(edge node1 node2) e])
+    (set node1 node2)))
 
 (: edge->pair (-> Edge (Pairof Node Node)))
 (define (edge->pair e)

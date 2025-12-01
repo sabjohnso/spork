@@ -1,40 +1,41 @@
 #lang racket
 
-(require
- spork/tape
- rackunit rackunit/spec)
+(module+ test
+  (require
+   spork/tape
+   rackunit rackunit/spec)
 
-(describe "tape"
-  (it "describes a data structure with a sequence of values and a position"
-    (context "with a tape define with 4 elements"
-      (define xs (make-tape 'a 'b 'c 'd))
-      (define xs-at-back (tape-fast-fwd xs))
-      (describe "tape-position"
-        (it "is initially 0"
-          (check-equal? (tape-position xs) 0))
+  (describe "tape"
+    (it "describes a data structure with a sequence of values and a position"
+      (context "with a tape define with 4 elements"
+        (define xs (make-tape 'a 'b 'c 'd))
+        (define xs-at-back (tape-fast-fwd xs))
+        (describe "tape-position"
+          (it "is initially 0"
+            (check-equal? (tape-position xs) 0))
 
-        (it "will be one if the tape is move forward one step"
-          (check-equal? (tape-position (tape-fwd xs)) 1))
+          (it "will be one if the tape is move forward one step"
+            (check-equal? (tape-position (tape-fwd xs)) 1))
 
-        (it "will be two if the tape is move forward by 2 steps"
-          (check-equal? (tape-position (tape-fwd-by xs 2)) 2))
+          (it "will be two if the tape is move forward by 2 steps"
+            (check-equal? (tape-position (tape-fwd-by xs 2)) 2))
 
-        (it "will provide the specified position after moving to a specified position the tape"
-          (check-equal? (tape-position (tape-move-to xs 2)) 2)))
+          (it "will provide the specified position after moving to a specified position the tape"
+            (check-equal? (tape-position (tape-move-to xs 2)) 2)))
 
-      (describe "tape-length"
-        (it "returns the total length of the tape regarless of its position"
-          (check-equal? (tape-length xs) 4)
-          (check-equal? (tape-length (tape-move-to xs 2)) 4)))
+        (describe "tape-length"
+          (it "returns the total length of the tape regarless of its position"
+            (check-equal? (tape-length xs) 4)
+            (check-equal? (tape-length (tape-move-to xs 2)) 4)))
 
-      (describe "tape-remaining"
-        (it "returns the remaining number of elements in a tape"
-          (it "it will initially be the same as the length"
-            (check-equal? (tape-remaining xs)
-                          (tape-length xs)))
-          (it "will decrement by one for each element consumed"
-            (check-equal? (tape-remaining (tape-fwd xs))
-                          (sub1 (tape-length xs))))))
+        (describe "tape-remaining"
+          (it "returns the remaining number of elements in a tape"
+            (it "it will initially be the same as the length"
+              (check-equal? (tape-remaining xs)
+                            (tape-length xs)))
+            (it "will decrement by one for each element consumed"
+              (check-equal? (tape-remaining (tape-fwd xs))
+                            (sub1 (tape-length xs))))))
         (describe "tape-fwd"
           (it "moves tape forward by one step"
             (check-equal? (tape-position (tape-fwd xs)) 1))
@@ -118,12 +119,12 @@
               (check-equal? 1 x)
               (check-equal? (tape '(2 3) '()) xs)))))
 
-  (it "can be constructed from a list"
-    (check-equal?
-     (list->tape '(a b c d))
-     (tape '(a b c d) '())))
+      (it "can be constructed from a list"
+        (check-equal?
+         (list->tape '(a b c d))
+         (tape '(a b c d) '())))
 
-  (it "can be constructed from a vector"
-    (check-equal?
-     (vector->tape #(a b c d))
-     (tape '(a b c d) '())))))
+      (it "can be constructed from a vector"
+        (check-equal?
+         (vector->tape #(a b c d))
+         (tape '(a b c d) '()))))))
