@@ -311,7 +311,24 @@
          (let/applicative ([(cons a b) (make-ziplist (cons 1 2) (cons 3 4))]
                            [(cons c d) (make-ziplist (cons 5 6) (cons 7 8))])
                           ((a `+ b) `* (c `+ d)))
-         (make-ziplist 33  105)))))
+         (make-ziplist 33  105)))
+
+      (it "supports lift functions"
+        (check-equal?
+         (lift sqr (make-ziplist 1 2))
+         (make-ziplist 1 4))
+
+        (check-equal?
+         (lift2 + (make-ziplist 1 2) (make-ziplist 3 4))
+         (make-ziplist 4 6))
+
+        (check-equal?
+         (lift3 + (make-ziplist 1) (make-ziplist 2) (make-ziplist 3))
+         (make-ziplist 6))
+
+        (check-equal?
+         (lift4 + (make-ziplist 1) (make-ziplist 2) (make-ziplist 3) (make-ziplist 4))
+         (make-ziplist 10)))))
 
   (describe "the functor protocol"
     (context "with a functor type"
