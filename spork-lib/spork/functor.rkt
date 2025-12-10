@@ -44,6 +44,10 @@
   [fapply (curried-> applicative? applicative? applicative?)]
   [fapply* (->* (applicative? applicative?) () #:rest (listof applicative?) applicative?)]
   [<*> (->* (applicative? applicative?) () #:rest (listof applicative?) applicative?)]
+  [lift (curried-> (-> any/c any/c) functor? functor?)]
+  [lift2 (curried-> (-> any/c any/c any/c) applicative? applicative? applicative?)]
+  [lift3 (curried-> (-> any/c any/c any/c any/c) applicative? applicative? applicative? applicative?)]
+  [lift4 (curried-> (-> any/c any/c any/c any/c any/c) applicative? applicative? applicative? applicative? applicative?)]
 
   [functor? predicate/c]
   [fmap (curried-> (-> any/c any/c) functor? functor?)]
@@ -446,6 +450,33 @@
         es:expr ...+)
      (syntax/loc stx
        (fapply* (fmap (curried-match-lambda (target targets ...) es ...) source) sources ...))]))
+
+(define-curried (lift f ma)
+  (fmap f ma))
+
+(define-curried (lift2 f ma mb)
+  (let/applicative ([a ma]
+                    [b mb])
+    (f a b)))
+
+(define-curried (lift3 f ma mb mc)
+  (let/applicative ([a ma]
+                    [b mb]
+                    [c mc])
+    (f a b c)))
+
+(define-curried (lift4 f ma mb mc md)
+  (let/applicative ([a ma]
+                    [b mb]
+                    [c mc]
+                    [d md])
+    (f a b c d)))
+
+
+
+
+
+
 
 
 ;; Functor

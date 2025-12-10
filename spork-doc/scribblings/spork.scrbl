@@ -28,3 +28,5 @@ Spork is a utility library.
 @include-section["spork/memoize.scrbl"]
 @include-section["spork/bits.scrbl"]
 @include-section["spork/mutable-collections.scrbl"]
+@include-section["spork/monoid.scrbl"]
+@include-section["spork/group.scrbl"]
