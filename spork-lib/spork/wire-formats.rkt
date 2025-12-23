@@ -154,12 +154,20 @@
   [fixed-record-field-count (-> fixed-record? natural-number/c)]
 
   (struct enum-type
-    [(value-type fixed-size-type?)
-     (named-values  unique-name-integer-pairs?)])
+    ([value-type fixed-size-type?]
+     [named-values  unique-name-integer-pairs?]))
+  [enum-type-names (-> enum-type? (listof symbol?))]
+  [enum-type-values (-> enum-type? (listof exact-integer?))]
+
 
   (struct discriminated-union
     ([discriminant enum-type?]
      [variants (listof (cons/c symbol? wire-format?))]))
+
+  [discriminated-union-variant
+   (->i ([union-type discriminated-union?]
+         [discriminant (union-type) (discriminated-union-variant-name/c union-type)])
+        [result any/c])]
 
   [fixed-size-type? predicate/c]
   [fixed-size-in-bits (-> fixed-size-type? natural-number/c)]
@@ -213,13 +221,11 @@
   (size unit signed? endianness bit-endianness)
   #:transparent)
 
-
 (define (fixed-integer-min-value type)
   (match type
     [(fixed-integer _ _ #f _ _) 0]
     [(fixed-integer size unit #t _ _)
      (- (expt 2 (sub1 (* size unit))))]))
-
 
 (define (fixed-integer-max-value type)
   (match-let ([(fixed-integer size unit signed? _ _) type])
@@ -1048,6 +1054,33 @@ permissible length of the `fixed-string` type (~a).
 (struct discriminated-union
   (discriminant variants))
 
+(define (discriminated-union-variant union-type variant-name)
+  (cdr (assoc variant-name (discriminated-union-variants union-type))))
+
+
+(define (discriminated-union-variant-name/c union-type)
+  (let ([names (enum-type-names (discriminated-union-discriminant union-type))])
+    (make-flat-contract
+     #:name (build-compound-type-name 'variant-name/c union-type)
+     #:first-order
+     (λ (arg)
+       (and (set-member? names arg))))))
+
+(define (discriminated-union-variant-constructors union-type)
+  (for/hash ([d/v (discriminated-union-variants union-type)])
+    (match-let ([(cons discriminant-name variant-type) d/v])
+      (values discriminant-name (bits-constructor variant-type)))))
+
+(define (discriminated-union-bits-constructor union-type)
+  (match-let ([(discriminated-union discriminant variants) union-type]
+              [variant-constructors
+               (for/hash ([d/v (discriminated-union-variants) union-type])
+                 (match-let ([(cons discriminant variant-type) union-type])
+                   (values discriminant (bits-constructor variant-type))))]))
+
+
+  (define (bits-constructor discriminant . args)
+    (for/fold ([bits (make-bits (+ (fixed-size-in-bits discriminant) (size-in-bits )))]))))
 
 (struct dynamically-sized-array
   (length-type

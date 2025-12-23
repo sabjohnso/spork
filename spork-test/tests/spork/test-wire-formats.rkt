@@ -5,15 +5,19 @@
 
   (describe "endian?"
     (it "is a predicate that recognizes endian specifiers"
+
       (it "recognizes 'little"
         (check-true (endian? 'little)))
+
       (it "recognizes 'big"
         (check-true (endian? 'big)))
+
       (it "doesn't recognize anything else"
         (check-false (endian? 'potato)))))
 
   (describe "fixed integer types"
     (describe "fixed-integer"
+
       (it "constructs a fixed integer type"
         (define size 32)
         (define unit 1)
@@ -21,28 +25,39 @@
         (define byte-endianness 'little)
         (define bit-endianness 'little)
         (define uint32 (fixed-integer size unit signed byte-endianness bit-endianness))
+
         (check-true (fixed-integer? uint32))
+
         (it "accepts a natural-number/c as the first argument to specify the size"
           (check-equal? (fixed-integer-size uint32) size))
+
         (it "does not accept values that are not natural-number/c for the first argument"
           (define bad-size -1)
           (check-exn exn:fail? (thunk (fixed-integer bad-size unit signed byte-endianness bit-endianness))))
+
         (it "accepts an exact-positive-integer? as the second argument specifying the unit"
           (check-equal? (fixed-integer-unit uint32) unit))
+
         (it "only accepts an exact-positive-integer? as the second argument specifying the unit"
           (define bad-unit 0)
           (check-exn exn:fail? (thunk (fixed-integer size bad-unit signed byte-endianness bit-endianness))))
+
         (it "accepts a boolean? as the second argument specifying the signedness"
           (check-equal? (fixed-integer-signed? uint32) signed))
+
         (it "only accepts a boolean? as the third argument specifying the signedness"
           (define bad-signed 8)
           (check-exn exn:fail? (thunk (fixed-integer size unit bad-signed byte-endianness bit-endianness))))
+
         (it "accepts an endian? value for fourth argument specifying the endianness"
           (check-equal? (fixed-integer-endianness uint32) byte-endianness))
+
         (it "only accepts an endian? value for fourth argument specifying the endianness"
           (define bad-byte-endianness 'medium)
           (check-exn exn:fail? (thunk (fixed-integer size unit signed bad-byte-endianness bit-endianness))))
+
         (it "accepts an endian? value for fifth argument specifying the bit-endianness"
+
           (check-equal? (fixed-integer-bit-endianness uint32) bit-endianness))
         (it "only accepts an endian? value for fifth argument specifying the bit-endianness"
           (define bad-bit-endianness 'medium)
@@ -68,87 +83,102 @@
 
     (describe "fixed-integer-bits-writer"
       (it "builds a function to write a fixed integer value to bits"
+
         (context "with an unsigend little endian fixed integer type"
           (define uint16-little (fixed-unsigned 2 #:endianness little))
           (define read-bits/uint16-little (fixed-integer-bits-reader uint16-little))
           (define write-bits/uint16-little (fixed-integer-bits-writer uint16-little))
+
           (it "returns a function that accepts an appropriately sized exact unsigned integer"
             (define value (sub1 (expt 2 16)))
             (define input-bits (make-bits 512))
             (define offset 32)
             (define output-bits (write-bits/uint16-little input-bits offset value))
             (check-equal? (read-bits/uint16-little output-bits offset)  value))
+
           (it "returns a function that won't accept negative values"
             (define value -1)
             (define input-bits (make-bits 512))
             (check-exn exn:fail? (thunk (write-bits/uint16-little input-bits 0 value))))
+
           (it "returns a function that won't accept values that too big"
             (define value (expt 2 16))
             (define input-bits (make-bits 512))
             (check-exn exn:fail? (thunk (write-bits/uint16-little input-bits 0 value))))
+
           (it "returns a function that won't accept bits that are too small"
             (define input-bits (make-bits 8))
             (check-exn exn:fail? (thunk (write-bits/uint16-little input-bits 0 0))))
+
           (it "returns a function that won't accept an offset that is too large"
             (define input-bits (make-bits 512))
             (define offset 500)
             (check-exn exn:fail? (thunk (write-bits/uint16-little input-bits offset 0)))))
+
         (context "with an unsigned big endian fixed integer type"
           (define uint16-big (fixed-unsigned 2 #:endianness big))
           (define read-bits/uint16-big (fixed-integer-bits-reader uint16-big))
           (define write-bits/uint16-big (fixed-integer-bits-writer uint16-big))
+
           (it "returns a function that acceps an appropriately sized exact unsigned integer"
             (define value (sub1 (expt 2 16)))
             (define input-bits (make-bits 512))
             (define offset 32)
             (define output-bits (write-bits/uint16-big input-bits offset value))
             (check-equal?  (read-bits/uint16-big output-bits offset) value)))
+
         (context "with a signed little endian fixed integer type"
           (define int16-little (fixed-signed 2 #:endianness little))
           (define read-bits/int16-little (fixed-integer-bits-reader int16-little))
           (define write-bits/int16-little (fixed-integer-bits-writer int16-little))
+
           (it "returns a function that accepts appropriately sized exact integers"
             (define value (sub1 (expt 2 (sub1 16))))
             (define input-bits (make-bits 512))
             (define offset 32)
             (define output-bits (write-bits/int16-little input-bits offset value))
             (check-equal? value (read-bits/int16-little output-bits offset)))
+
           (it "returns a function that accepts appropriately sized negative exact-intgers"
             (define value (- (sub1 (expt 2 (sub1 16)))))
             (define input-bits (make-bits 512))
             (define offset 32)
             (define output-bits (write-bits/int16-little input-bits offset value))
             (check-equal? (read-bits/int16-little output-bits offset) value))
+
           (it "returns a function that accepts 0"
             (define value 0)
             (define input-bits (make-bits 512))
             (define offset 32)
             (define output-bits (write-bits/int16-little input-bits offset value))
-            (check-equal? (read-bits/int16-little output-bits offset) value))
+            (check-equal? (read-bits/int16-little output-bits offset) value)))
 
-          )
         (context "with a signed big endian fixed integer type"
           (define int16-big (fixed-signed 2 #:endianness big))
           (define read-bits/int16-big (fixed-integer-bits-reader int16-big))
           (define write-bits/int16-big (fixed-integer-bits-writer int16-big))
+
           (it "returns a function that accepts appropriately sized exact exact integer"
             (define value (sub1 (expt 2 15)))
             (define input-bits (make-bits 512))
             (define offset 32)
             (define output-bits (write-bits/int16-big input-bits offset value))
             (check-equal? (read-bits/int16-big output-bits offset) value))
+
           (it "returns a function that accepts appropriately sized negative integers"
             (define value (- (sub1 (expt 2 15))))
             (define input-bits (make-bits 512))
             (define offset 32)
             (define output-bits (write-bits/int16-big input-bits offset value))
             (check-equal? (read-bits/int16-big output-bits offset) value))
+
           (it "returns a function that accepts 0"
             (define value 0)
             (define input-bits (make-bits 512))
             (define offset 32)
             (define output-bits (write-bits/int16-big input-bits offset value))
             (check-equal? (read-bits/int16-big output-bits offset) value))
+
           (it "returns a function that accepts -1"
             (define value -1)
             (define input-bits (make-bits 512))
@@ -163,6 +193,7 @@
       (define padding-side 'right)
 
       (describe "fixed-string"
+
         (it "constructs a fixed string type"
           (check-true (fixed-string? (fixed-string len padding-character padding-side)))))
 
@@ -171,6 +202,7 @@
         (define write-string10 (fixed-string-bits-writer string10))
         (define read-string10 (fixed-string-bits-reader string10))
         (describe "fixed-string-make-writer/bytes"
+
           (it "builds a function to write bytes to bits"
             (define offset 13)
             (define input-bytes #"abc123")
@@ -186,6 +218,7 @@
         (define string10 (fixed-string len padding-character padding-side))
         (define write-string10 (fixed-string-bits-writer string10))
         (define read-string10 (fixed-string-bits-reader string10))
+
         (it "builds a function to write bytes to bits"
           (define input-bytes #"abc123")
           (define offset 32)
@@ -196,8 +229,10 @@
                                               (char->integer #\space))
                                   input-bytes))
           (check-equal? output-bytes expected-bytes))
+
         (it "builds a function that only accepts bytes"
           check-exn exn:fail (thunk (write-string10 "abc123")))
+
         (it "builds a function that only accepts bytes of valid lengths"
           (check-exn exn:fail? (thunk (write-string10 (make-bytes (add1 len)))))))))
 
@@ -229,6 +264,7 @@
 
         (it "does accept 0 for the number of elements"
           (check-true (fixed-array? (fixed-array uint16 0))))))
+
     (describe "fixed constructor"
       (context "with a fixed array type"
         (define point-type (fixed-array int16-little 3))
@@ -237,23 +273,32 @@
         (define x 12)
         (define y 345)
         (define z 6789)
+
         (describe "fixed-array-bits-constructor"
+
           (it "builds a function that constructs bits from values for the elements of the array"
             (check-true (bits? (make-point x y z))))
+
           (it "accepts insufficient arguments"
             (check-true (bits? (make-point x y))))
+
           (it "does not accept excess arguments"
+
             (check-exn exn:fail? (thunk (make-point x y z 0)))))
+
         (describe "fixed-array-element-reader"
+
           (it "builds a function that reads elements of an array"
             (define point (make-point x y z))
             (check-equal? (point-coord point 0) x)
             (check-equal? (point-coord point 1) y)
             (check-equal? (point-coord point 2) z))
+
           (it "does not accept an index that is out of bounds"
             (check-exn exn:fail? (thunk (point-coord (make-point x y z) 3))))))))
 
   (describe "fixed-tuple"
+
     (it "constructs a fixed-tuple? from a list of fixed-size-type? and fixed-tuple-super? elements"
       (define uint16 (fixed-integer 16 1 #f 'little 'little))
       (define uint64 (fixed-integer 64 1 #f 'little 'little))
@@ -281,6 +326,7 @@
         (check-true (fixed-tuple? (fixed-tuple '()))))))
 
   (describe "fixed-record"
+
     (it "constructs a fixed-record? from a list of fixed-record-component? values"
       (define int64 (fixed-integer 64 1 #t 'little 'little))
       (define uint64 (fixed-integer 64 1 #f 'little 'little))
@@ -364,6 +410,7 @@
         (fixed-record-field
          'f1b1
          (fixed-array (fixed-integer 1 8 #f 'little 'little) 2)))))
+
     (it "fails when field names are duplicated"
       (check-exn
        exn:fail?
@@ -371,6 +418,7 @@
         (fixed-record
          (list (fixed-record-field 'x uint8-little)
                (fixed-record-field 'x uint8-little))))))
+
     (it "fails when field names are duplicated in supers"
       (check-exn exn:fail?
                  (thunk (fixed-record
@@ -399,8 +447,8 @@
         (define x   11)
         (define y   12)
         (define id 127)
-        (describe "fixed-record-bits-constructor"
 
+        (describe "fixed-record-bits-constructor"
           (it "builds a function that constructs bits from values for the fields of the record"
             (check-true (bits? (make-point 3 4 5))))
 
@@ -411,7 +459,6 @@
             (check-exn exn:fail? (thunk (make-point 3 4)))))
 
         (describe "fixed-record-bits-assoc-constructor"
-
           (it "builds a function that constructs bits from an alist with the field names as keys"
             (check-true (bits? (make-point-assoc '((x . 3) (y . 4) (id . 5)))))
             (check-equal? (point-x  (make-point-assoc '())) 0)
@@ -587,7 +634,25 @@
 
     (it "has a size that is the same as its value type"
       (check-equal? (fixed-size-in-bits abc)
-                    (fixed-size-in-bits value-type))))
+                    (fixed-size-in-bits value-type)))
+
+    (describe "enum-type-named-values"
+      (it "returns the alist defining the name and values"
+        (check-equal?
+         (enum-type-named-values abc)
+         values)))
+
+    (describe "enum-type-value-type"
+      (it "returns the type of the values"
+        (check-equal? (enum-type-value-type abc) value-type)))
+
+    (describe "enum-type-enum-type-names"
+      (it "returns a list of type names"
+        (check-equal? (enum-type-names abc) '(a b c))))
+
+    (describe "enum-type-values"
+      (it "returns a list of the values"
+        (check-equal? (enum-type-values abc) '(1 2 3)))))
 
   (describe "discriminated-union?"
     (define value-type uint8-little)
@@ -596,12 +661,45 @@
     (define type-a (fixed-record (list (fixed-record-field 'field1 uint8-little))))
     (define type-b (fixed-record (list (fixed-record-field 'field1 uint16-little))))
     (define type-c (fixed-record (list (fixed-record-field 'field1 uint32-little))))
-    (define some-type (discriminated-union abc
+    (define union-type (discriminated-union abc
                         `((a . ,type-a)
                           (b . ,type-b)
                           (c . ,type-c))))
     (it "constructs a discriminated-union"
-      (check-true (discriminated-union? some-type))))
+      (check-true (discriminated-union? union-type)))
+
+    (describe "discriminated-union-discriminant"
+      (it "returns the type of the discriminant for a discriminated union"
+        (check-equal?
+         (discriminated-union-discriminant union-type)
+         abc)))
+
+    (describe "dicriminated-union-variants"
+      (it "returns an association variants"
+        (check-equal?
+         (discriminated-union-variants union-type)
+         `((a . ,type-a)
+           (b . ,type-b)
+           (c . ,type-c)))))
+
+    (describe "discriminated-union-variant"
+      (it "returns the variant associated with a name"
+        (check-equal?
+         (discriminated-union-variant union-type 'a)
+         type-a)
+
+        (check-equal?
+         (discriminated-union-variant union-type 'b)
+         type-b)
+
+        (check-equal?
+         (discriminated-union-variant union-type 'c)
+         type-c))
+
+      (it "requires a valid variant name"
+        (check-exn exn:fail? (thunk (discriminated-union-variant union-type 'd))))))
+
+
 
   (describe "fixed-size-in-bits"
     (it "returns the size of fixed size types in bits"
@@ -609,20 +707,24 @@
           (define size 4)
           (define unit 8)
           (define uint32 (fixed-integer size unit #t 'little 'little))
+
         (it "returns the size of fixed integer types in bits"
           (check-equal? (fixed-size-in-bits uint32)
                         (* size unit)))
+
         (it "returns the size of fixed array types in bits"
           (define array-length 3)
           (check-equal? (fixed-size-in-bits (fixed-array uint32 3))
                         (* size unit array-length))
           (check-equal? (fixed-size-in-bits (fixed-array uint32 0)) 0))
+
         (it "returns the size of fixed record types in bits"
           (check-equal?
            (fixed-size-in-bits
             (fixed-record
              (list (fixed-record-field 'value (fixed-integer 8 1 #f 'little 'little)))))
            8))
+
         (it "returns the size of fixed string types in bits"
           (check-equal?
            (fixed-size-in-bits
